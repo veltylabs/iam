@@ -312,6 +312,7 @@ package config
 import (
 	"github.com/tinywasm/auth/authority"
 	"github.com/tinywasm/fmt"
+	"github.com/tinywasm/model"
 	"github.com/tinywasm/rbac"
 )
 
@@ -320,7 +321,10 @@ import (
 // No crea ni asigna permisos: adjuntar permisos al rol es responsabilidad
 // de quien llama — cada app declara su propia política (ver
 // ARCHITECTURE.md §1: "Policy belongs to the consumer" de tinywasm/rbac).
-func EnsureRole(rbacSvc *rbac.Service, authMod *authority.Module, roleID, roleCode, roleName, roleDescription string, emails []string) error {
+//
+// roleCode es model.RoleCode, no string — firma real verificada contra
+// tinywasm/rbac/rbac.go:8 (CreateRole) al implementar esta etapa.
+func EnsureRole(rbacSvc *rbac.Service, authMod *authority.Module, roleID string, roleCode model.RoleCode, roleName, roleDescription string, emails []string) error {
 	if rbacSvc == nil {
 		return fmt.Errf("bootstrap: rbac service is nil")
 	}
@@ -640,3 +644,22 @@ func TestEnsureRoleRejectsNilDeps(t *testing.T) {
 - Columna o partición por `project_id` — Etapa 2, sin diseñar todavía.
 - Tocar `veltylabs/misitio` para que consuma este servicio — plan aparte, otro repo.
 - Tocar `tinywasm/user`, `tinywasm/auth` o `tinywasm/rbac`.
+
+## Nota de implementación (ejecutado localmente 2026-08-24)
+
+Dos hallazgos reales al implementar, registrados aquí para que no se repita
+la investigación:
+
+1. **`rbacSvc.CreateRole`'s segundo parámetro es `model.RoleCode`, no
+   `string`** (verificado en `tinywasm/rbac/rbac.go:8`). La firma de
+   `EnsureRole` en §1.4 ya refleja esto — si copias este plan a mano,
+   cuidado con ese tipo.
+2. **`github.com/tinywasm/auth/oauth2/provider/google/mock` no está
+   publicado**: existe sin commitear en el filesystem local de
+   `tinywasm/auth` (más reciente que el tag `v0.0.3`). `go.mod` de este
+   repo tiene un `replace` temporal apuntando al path local de esa
+   máquina — **no lo pushees así**; quítalo en cuanto `tinywasm/auth`
+   publique una versión que incluya ese subpaquete.
+
+`go build ./...`, `go vet ./...` y `go test ./...` verdes con ese replace
+puesto.
