@@ -10,7 +10,7 @@ require (
 	github.com/tinywasm/layout v0.1.45
 	github.com/tinywasm/model v0.1.6
 	github.com/tinywasm/orm v0.11.10
-	github.com/tinywasm/rbac v0.0.2
+	github.com/tinywasm/rbac v0.0.3
 	github.com/tinywasm/storage v0.0.5
 	github.com/tinywasm/unixid v0.2.26
 	github.com/tinywasm/user v0.3.11

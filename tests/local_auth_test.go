@@ -11,6 +11,7 @@ const (
 	roleExampleID                  = "role_example_admin"
 	roleExampleCode                = "example_admin"
 	permExampleRead                = "example:read"
+	testProjectID                  = "test-project"
 )
 
 func TestLocalScenariosStartWithoutGoogleEnv(t *testing.T) {
@@ -34,23 +35,23 @@ func TestLocalScenariosPermissionsDifferByRole(t *testing.T) {
 		t.Fatalf("viewer subject: %v", err)
 	}
 
-	if err := rbacSvc.CreateRole(roleExampleID, roleExampleCode, "Example Admin", ""); err != nil {
+	if err := rbacSvc.CreateRole(testProjectID, roleExampleID, roleExampleCode, "Example Admin", ""); err != nil {
 		t.Fatalf("CreateRole: %v", err)
 	}
-	if err := rbacSvc.CreatePermission(permExampleRead, "Read example", exampleResource, model.Read); err != nil {
+	if err := rbacSvc.CreatePermission(testProjectID, permExampleRead, "Read example", exampleResource, model.Read); err != nil {
 		t.Fatalf("CreatePermission: %v", err)
 	}
-	if err := rbacSvc.AssignPermission(roleExampleID, permExampleRead); err != nil {
+	if err := rbacSvc.AssignPermission(testProjectID, roleExampleID, permExampleRead); err != nil {
 		t.Fatalf("AssignPermission: %v", err)
 	}
-	if err := rbacSvc.AssignRole(string(adminSubj.ID), roleExampleID); err != nil {
+	if err := rbacSvc.AssignRole(testProjectID, string(adminSubj.ID), roleExampleID); err != nil {
 		t.Fatalf("AssignRole: %v", err)
 	}
 
-	if !rbacSvc.Can(string(adminSubj.ID), exampleResource, model.Read) {
+	if !rbacSvc.Can(testProjectID, string(adminSubj.ID), exampleResource, model.Read) {
 		t.Errorf("admin should have %s:Read", exampleResource)
 	}
-	if rbacSvc.Can(string(viewerSubj.ID), exampleResource, model.Read) {
+	if rbacSvc.Can(testProjectID, string(viewerSubj.ID), exampleResource, model.Read) {
 		t.Errorf("viewer should NOT have %s:Read", exampleResource)
 	}
 	if adminSubj.ID == viewerSubj.ID {
