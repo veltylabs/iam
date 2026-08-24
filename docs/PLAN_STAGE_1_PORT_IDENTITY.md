@@ -654,12 +654,13 @@ la investigación:
    `string`** (verificado en `tinywasm/rbac/rbac.go:8`). La firma de
    `EnsureRole` en §1.4 ya refleja esto — si copias este plan a mano,
    cuidado con ese tipo.
-2. **`github.com/tinywasm/auth/oauth2/provider/google/mock` no está
-   publicado**: existe sin commitear en el filesystem local de
-   `tinywasm/auth` (más reciente que el tag `v0.0.3`). `go.mod` de este
-   repo tiene un `replace` temporal apuntando al path local de esa
-   máquina — **no lo pushees así**; quítalo en cuanto `tinywasm/auth`
-   publique una versión que incluya ese subpaquete.
+2. **`github.com/tinywasm/auth/oauth2/provider/google/mock` no estaba
+   publicado**: existía sin commitear en el filesystem local de
+   `tinywasm/auth` (más reciente que el tag `v0.0.3`). Se publicó vía
+   `gopush` como `tinywasm/auth v0.0.4` (vet/race/tests/wasm verdes); el
+   `replace` temporal que apuntaba al path local ya se retiró de
+   `go.mod` — este repo depende de `tinywasm/auth v0.0.4` publicado, sin
+   ningún `replace`.
 
-`go build ./...`, `go vet ./...` y `go test ./...` verdes con ese replace
-puesto.
+`go build ./...`, `go vet ./...` y `go test ./...` verdes contra las
+versiones publicadas.

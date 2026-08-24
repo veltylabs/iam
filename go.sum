@@ -1,3 +1,5 @@
+github.com/tinywasm/auth v0.0.4 h1:R9ddE/364tK8gvqQFXLTut+gui1uX6Pgu/m6SXX3LOE=
+github.com/tinywasm/auth v0.0.4/go.mod h1:Ra+RjIGII6HEFQlgWj8QQs7S6Z1IC+vHrNxRR8L05dg=
 github.com/tinywasm/base64 v0.0.5 h1:OuRGCuJrUzqo15jtotxs9PKL0mLuZmRHL6heUFaZZE4=
 github.com/tinywasm/base64 v0.0.5/go.mod h1:p6s8iOD4F6s6smO80R3bYd8ZGZQxXCBt+5KxFQ4vCHU=
 github.com/tinywasm/color v0.1.1 h1:S00T0XR42Q3sDpfJELNnF0HFxMh9gApH4SnA0Ml6Q7A=

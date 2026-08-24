@@ -2,14 +2,8 @@ module github.com/veltylabs/iam
 
 go 1.25.2
 
-// TEMPORAL — quitar en cuanto tinywasm/auth publique una version que
-// incluya oauth2/provider/google/mock (hoy solo existe sin commitear en
-// el filesystem local). NO pushear este replace: es un path absoluto de
-// esta maquina.
-replace github.com/tinywasm/auth => /home/cesar/Dev/Project/tinywasm/auth
-
 require (
-	github.com/tinywasm/auth v0.0.0-00010101000000-000000000000
+	github.com/tinywasm/auth v0.0.4
 	github.com/tinywasm/fmt v0.25.7
 	github.com/tinywasm/html v0.0.18
 	github.com/tinywasm/layout v0.1.45

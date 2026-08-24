@@ -1,4 +1,5 @@
 # iam
+<img src="docs/img/badges.svg">
 
 Servicio central de identidad, sesión SSO y RBAC para todos los proyectos de
 Velty. Reemplaza el patrón actual — cada app monta su propio
