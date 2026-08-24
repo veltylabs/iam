@@ -4,6 +4,7 @@ go 1.25.2
 
 require (
 	github.com/tinywasm/auth v0.0.4
+	github.com/tinywasm/env v0.0.7
 	github.com/tinywasm/fmt v0.25.7
 	github.com/tinywasm/html v0.0.18
 	github.com/tinywasm/layout v0.1.45

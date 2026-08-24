@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/tinywasm/auth/authority"
+	"github.com/tinywasm/env/osenv"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
 	"github.com/tinywasm/storage/mem"
@@ -24,7 +25,7 @@ func setup(t *testing.T) (*orm.DB, *authority.Module, *rbac.Service, *unixid.Uni
 	if err != nil {
 		t.Fatalf("unixid: %v", err)
 	}
-	authMod, rbacSvc, err := config.NewProductionAuth(db, ids)
+	authMod, rbacSvc, err := config.NewProductionAuth(db, ids, osenv.Reader())
 	if err != nil {
 		t.Fatalf("NewProductionAuth: %v", err)
 	}

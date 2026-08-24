@@ -1,12 +1,11 @@
 package config
 
 import (
-	"os"
-
 	"github.com/tinywasm/auth"
 	"github.com/tinywasm/auth/authority"
 	"github.com/tinywasm/auth/oauth2"
 	"github.com/tinywasm/auth/oauth2/provider/google"
+	"github.com/tinywasm/env"
 	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/model"
 	"github.com/tinywasm/orm"
@@ -22,20 +21,23 @@ const (
 )
 
 // NewProductionAuth arma el motor de identidad+RBAC para producción (Google
-// OAuth). Falla rápido si falta cualquier variable: arrancar con OAuth roto
-// en silencio es peor que no arrancar. No crea roles ni permisos — eso es
-// política de cada app consumidora (ver bootstrap.go para el mecanismo
-// genérico de asignación por email).
-func NewProductionAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *rbac.Service, error) {
-	clientID := os.Getenv(EnvGoogleClientID)
+// OAuth). read resuelve las variables de Google — el servidor local inyecta
+// osenv.Reader(), un futuro edge/main.go inyectará un Reader sobre el
+// binding de Cloudflare; este paquete nunca importa "os" directamente (ver
+// AGENTS.md Restricción #3). Falla rápido si falta cualquier variable:
+// arrancar con OAuth roto en silencio es peor que no arrancar. No crea
+// roles ni permisos — eso es política de cada app consumidora (ver
+// bootstrap.go para el mecanismo genérico de asignación por email).
+func NewProductionAuth(db *orm.DB, ids model.IDGenerator, read env.Reader) (*authority.Module, *rbac.Service, error) {
+	clientID := read(EnvGoogleClientID)
 	if clientID == "" {
 		return nil, nil, fmt.Errf("auth: missing required environment variable %s", EnvGoogleClientID)
 	}
-	clientSecret := os.Getenv(EnvGoogleClientSecret)
+	clientSecret := read(EnvGoogleClientSecret)
 	if clientSecret == "" {
 		return nil, nil, fmt.Errf("auth: missing required environment variable %s", EnvGoogleClientSecret)
 	}
-	redirectURL := os.Getenv(EnvGoogleRedirectURL)
+	redirectURL := read(EnvGoogleRedirectURL)
 	if redirectURL == "" {
 		return nil, nil, fmt.Errf("auth: missing required environment variable %s", EnvGoogleRedirectURL)
 	}
