@@ -4,9 +4,9 @@ go 1.25.2
 
 require (
 	github.com/tinywasm/auth v0.0.4
+	github.com/tinywasm/components v0.5.28
 	github.com/tinywasm/env v0.0.7
 	github.com/tinywasm/fmt v0.25.7
-	github.com/tinywasm/html v0.0.18
 	github.com/tinywasm/layout v0.1.45
 	github.com/tinywasm/model v0.1.6
 	github.com/tinywasm/orm v0.11.10
@@ -26,6 +26,7 @@ require (
 	github.com/tinywasm/events v0.0.2 // indirect
 	github.com/tinywasm/fetch v0.1.27 // indirect
 	github.com/tinywasm/font v0.0.4 // indirect
+	github.com/tinywasm/html v0.0.18 // indirect
 	github.com/tinywasm/input v0.0.5 // indirect
 	github.com/tinywasm/json v0.5.23 // indirect
 	github.com/tinywasm/router v0.1.27 // indirect
