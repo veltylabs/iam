@@ -4,8 +4,9 @@
 package api
 
 const (
-	PathHealth = "/api/health"
-	PathToken  = "/api/token"
+	PathHealth       = "/api/health"
+	PathToken        = "/api/token"
+	PathUsersResolve = "/api/users/resolve"
 )
 
 // BindingD1 es el nombre del binding de D1 declarado en Cloudflare para la

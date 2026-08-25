@@ -12,11 +12,12 @@ import (
 
 const PathHealth = api.PathHealth
 const PathToken = api.PathToken
+const PathUsersResolve = api.PathUsersResolve
 const BindingD1 = api.BindingD1
 
 // Register monta todas las rutas de iam en el router.
 //
-// PathToken no lleva CORS: el llamador es siempre el SERVIDOR de un
+// Ninguna ruta lleva CORS: el llamador es siempre el SERVIDOR de un
 // proyecto consumidor (server-to-server), nunca el navegador del usuario
 // directamente — el client_secret no puede vivir en un bundle WASM/JS
 // (ver ARCHITECTURE.md §6.4/§7). Sin llamador cross-origin, no hay
@@ -24,6 +25,10 @@ const BindingD1 = api.BindingD1
 func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte) {
 	r.Get(PathHealth, Health(db)).Public()
 	r.Post(PathToken, Token(db, authMod, rbacSvc, secret)).Authenticated()
+	// PathUsersResolve is Public() at the router's access-gate level
+	// (no session cookie is involved — see its own doc), but it is NOT
+	// reachable without a valid client_secret, checked inside the handler.
+	r.Post(PathUsersResolve, ResolveUser(db, authMod)).Public()
 }
 
 // Health devuelve el manejador HTTP para la verificación de estado.
@@ -129,5 +134,85 @@ func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret 
 		}
 		ctx.WriteStatus(200)
 		_ = ctx.Encode(&TokenResponse{Token: token, Email: u.Email, Name: u.Name, Avatar: u.Avatar})
+	}
+}
+
+// ResolveUserRequest es el cuerpo de POST /api/users/resolve. No hay
+// sesión de por medio — a diferencia de /api/token, el email de destino no
+// tiene por qué haber iniciado sesión nunca (un admin de un consumidor
+// registra un cliente nuevo por su email). client_secret es la única
+// prueba de identidad: sin él, cualquiera podría crear usuarios en
+// cualquier proyecto.
+type ResolveUserRequest struct {
+	ProjectID    string
+	ClientSecret string
+	Email        string
+	Name         string
+}
+
+func (r *ResolveUserRequest) IsNil() bool { return r == nil }
+func (r *ResolveUserRequest) EncodeFields(w model.FieldWriter) {
+	w.String("project_id", r.ProjectID)
+	w.String("client_secret", r.ClientSecret)
+	w.String("email", r.Email)
+	w.String("name", r.Name)
+}
+func (r *ResolveUserRequest) DecodeFields(fr model.FieldReader) {
+	r.ProjectID, _ = fr.String("project_id")
+	r.ClientSecret, _ = fr.String("client_secret")
+	r.Email, _ = fr.String("email")
+	r.Name, _ = fr.String("name")
+}
+
+// ResolveUserResponse es la respuesta de POST /api/users/resolve.
+type ResolveUserResponse struct {
+	Sub string
+}
+
+func (r *ResolveUserResponse) IsNil() bool { return r == nil }
+func (r *ResolveUserResponse) EncodeFields(w model.FieldWriter) {
+	w.String("sub", r.Sub)
+}
+func (r *ResolveUserResponse) DecodeFields(fr model.FieldReader) {
+	r.Sub, _ = fr.String("sub")
+}
+
+// ResolveUser busca un usuario por email dentro de la identidad global de
+// iam (no hay tabla de usuarios por proyecto: la identidad es una sola,
+// ver ARCHITECTURE.md §1) y lo crea si no existe. Devuelve su Sub — el
+// mismo id que llevará el Sub de su token cuando inicie sesión, así que un
+// consumidor puede asignarle recursos (ej. dueño de un sitio) ANTES de que
+// esa persona haga login por primera vez.
+func ResolveUser(db *orm.DB, authMod *authority.Module) router.HandlerFunc {
+	return func(ctx router.Context) {
+		ctx.SetHeader("Content-Type", "application/json")
+		var body ResolveUserRequest
+		if err := ctx.Decode(&body); err != nil {
+			ctx.WriteStatus(400)
+			return
+		}
+		if body.Email == "" {
+			ctx.WriteStatus(400)
+			return
+		}
+		ok, err := config.VerifyProjectSecret(db, body.ProjectID, body.ClientSecret)
+		if err != nil {
+			ctx.WriteStatus(500)
+			return
+		}
+		if !ok {
+			ctx.WriteStatus(403)
+			return
+		}
+		u, err := authMod.UserByEmail(body.Email)
+		if err != nil {
+			u, err = authMod.CreateUser(body.Email, body.Name, "")
+			if err != nil {
+				ctx.WriteStatus(500)
+				return
+			}
+		}
+		ctx.WriteStatus(200)
+		_ = ctx.Encode(&ResolveUserResponse{Sub: u.Id})
 	}
 }

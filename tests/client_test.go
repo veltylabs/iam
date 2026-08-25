@@ -80,6 +80,33 @@ func TestFetchAuthzToken_Unauthorized(t *testing.T) {
 	}
 }
 
+// TestResolveUser_CallsAndReturnsSub proves client.ResolveUser posts
+// project_id/client_secret/email and decodes the returned sub — the
+// consumer-shaped counterpart of iam's own
+// TestResolveUser_CreatesThenReusesSameSub.
+func TestResolveUser_CallsAndReturnsSub(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{"sub":"user-abc"}`))
+	}))
+	defer srv.Close()
+
+	sub, err := client.ResolveUser(srv.URL, "misitio", "the-secret", "new@test.com", "New Client")
+	if err != nil {
+		t.Fatalf("ResolveUser: %v", err)
+	}
+	if sub != "user-abc" {
+		t.Errorf("sub: got %q, want %q", sub, "user-abc")
+	}
+	if !containsAll(gotBody, `"project_id":"misitio"`, `"client_secret":"the-secret"`, `"email":"new@test.com"`) {
+		t.Errorf("body missing expected fields: %q", gotBody)
+	}
+}
+
 func containsAll(s string, subs ...string) bool {
 	for _, sub := range subs {
 		if !contains(s, sub) {

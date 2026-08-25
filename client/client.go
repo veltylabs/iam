@@ -122,3 +122,57 @@ func FetchAuthzToken(iamBaseURL, projectID, clientSecret, ssoCookieValue string)
 	}
 	return Identity{Claims: claims, Email: tr.Email, Name: tr.Name, Avatar: tr.Avatar}, nil
 }
+
+type resolveUserRequest struct {
+	ProjectID    string
+	ClientSecret string
+	Email        string
+	Name         string
+}
+
+func (r *resolveUserRequest) IsNil() bool { return r == nil }
+func (r *resolveUserRequest) EncodeFields(w model.FieldWriter) {
+	w.String("project_id", r.ProjectID)
+	w.String("client_secret", r.ClientSecret)
+	w.String("email", r.Email)
+	w.String("name", r.Name)
+}
+func (r *resolveUserRequest) DecodeFields(fr model.FieldReader) {}
+
+type resolveUserResponse struct {
+	Sub string
+}
+
+func (r *resolveUserResponse) IsNil() bool                      { return r == nil }
+func (r *resolveUserResponse) EncodeFields(w model.FieldWriter) {}
+func (r *resolveUserResponse) DecodeFields(fr model.FieldReader) {
+	r.Sub, _ = fr.String("sub")
+}
+
+// ResolveUser calls POST <iamBaseURL>/api/users/resolve server-to-server:
+// finds (or creates) a user by email within iam's identity, and returns
+// their Sub — the same id their token's Sub will carry once they log in.
+// For a consumer that needs to grant a resource (e.g. site ownership) to
+// someone who may never have logged in yet. Requires only clientSecret —
+// there is no session involved (see ARCHITECTURE.md/PathUsersResolve doc
+// in iam's routes package for why that's safe).
+func ResolveUser(iamBaseURL, projectID, clientSecret, email, name string) (string, error) {
+	var body []byte
+	if err := json.Encode(&resolveUserRequest{ProjectID: projectID, ClientSecret: clientSecret, Email: email, Name: name}, &body); err != nil {
+		return "", err
+	}
+	resp, err := doSync(fetch.Post(iamBaseURL + "/api/users/resolve").
+		ContentTypeJSON().
+		Body(body))
+	if err != nil {
+		return "", err
+	}
+	if resp.Status != 200 {
+		return "", fmt.Errf("iam: POST /api/users/resolve returned status %d", resp.Status)
+	}
+	var rr resolveUserResponse
+	if err := json.Decode(resp.Body(), &rr); err != nil {
+		return "", err
+	}
+	return rr.Sub, nil
+}

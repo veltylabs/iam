@@ -131,3 +131,44 @@ func encodeTokenRequest(t *testing.T, projectID, clientSecret string) ([]byte, e
 	}
 	return out, nil
 }
+
+// TestResolveUser_CreatesThenReusesSameSub proves ResolveUser is
+// idempotent by email: calling it twice for the same address returns the
+// SAME Sub both times, and a wrong client_secret is rejected without
+// touching the identity store.
+func TestResolveUser_CreatesThenReusesSameSub(t *testing.T) {
+	backend := setupBackend(t)
+	if err := config.CreateProject(backend.DB, "proj-1", "Proj One", "correct-secret"); err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	handler := routes.ResolveUser(backend.DB, backend.Auth)
+
+	call := func(secret string) (int, routes.ResolveUserResponse) {
+		ctx := &mock.Context{}
+		var body []byte
+		if err := json.Encode(&routes.ResolveUserRequest{
+			ProjectID: "proj-1", ClientSecret: secret, Email: "client@test.com", Name: "Client",
+		}, &body); err != nil {
+			t.Fatal(err)
+		}
+		ctx.InBody = body
+		handler(ctx)
+		var resp routes.ResolveUserResponse
+		_ = json.Decode(ctx.ResponseBody(), &resp)
+		return ctx.Status, resp
+	}
+
+	status, _ := call("wrong-secret")
+	if status != 403 {
+		t.Fatalf("status: got %d, want 403", status)
+	}
+
+	status1, resp1 := call("correct-secret")
+	if status1 != 200 || resp1.Sub == "" {
+		t.Fatalf("first call: status=%d sub=%q", status1, resp1.Sub)
+	}
+	status2, resp2 := call("correct-secret")
+	if status2 != 200 || resp2.Sub != resp1.Sub {
+		t.Fatalf("second call: status=%d sub=%q, want same sub as first (%q)", status2, resp2.Sub, resp1.Sub)
+	}
+}

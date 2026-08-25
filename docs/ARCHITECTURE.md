@@ -246,6 +246,18 @@ antes de esta etapa.
   que sobrevive la ida y vuelta a Google. Sin esa validación, `iam` sería
   un open-redirect utilizable para phishing.
 
+### 6.5 — Resolver/crear usuario por email, sin sesión
+
+`POST /api/users/resolve` (server-to-server, mismo `client_secret` que
+`/api/token`) resuelve un email a su `Sub` de `iam`, creando el usuario si
+no existe — **sin sesión de por medio**: un admin de `misitio` puede
+registrar un cliente nuevo por su email y asignarle un sitio ANTES de que
+esa persona haga login por primera vez, y el `Sub` que reciba coincidirá
+con el que llevará su token cuando sí inicie sesión (identidad es global
+en `iam`, no por proyecto — ver §1). Añadido para no perder esta
+funcionalidad que `misitio` ya tenía contra su `authority.Module` local
+(`AcceptAdminRequest`/`PostAdminSites`).
+
 ## 8. Lo que sigue quedando fuera de este repo
 - **Panel de administración de `iam`** (`web/client.go`, `modules/`) —
   mencionado en `AGENTS.md` Restricción #1 como parte legítima de este
