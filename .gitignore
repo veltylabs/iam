@@ -19,3 +19,6 @@ coverage.html
 *.code-workspace
 .vscode
 go.work
+
+# goflare build output
+.build/
