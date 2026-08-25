@@ -17,12 +17,28 @@ const BindingD1 = api.BindingD1
 
 // Register monta todas las rutas de iam en el router.
 //
+// modules is the single, exhaustive list of everything this server mounts
+// through router.APIModule. It is intentionally the ONLY place iam calls
+// MountAPI: a module with routes to serve belongs in this slice, never
+// invoked ad hoc elsewhere, so adding a module here is the only way its
+// routes reach a caller — and leaving it out is the only way they don't.
+// That is what closes the hole this plan exists for: authMod's OAuth routes
+// (/oauth/google, /oauth/callback/google) and /logout were built and
+// enabled (config/auth.go, config/auth_local.go) but never mounted, so
+// every login attempt 404'd, silently, since Stage 4 — MountAPI existed and
+// was correct, nothing ever called it.
+//
 // Ninguna ruta lleva CORS: el llamador es siempre el SERVIDOR de un
 // proyecto consumidor (server-to-server), nunca el navegador del usuario
 // directamente — el client_secret no puede vivir en un bundle WASM/JS
 // (ver ARCHITECTURE.md §6.4/§7). Sin llamador cross-origin, no hay
 // cabeceras CORS que emitir.
 func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte) {
+	modules := []router.APIModule{authMod}
+	for _, m := range modules {
+		m.MountAPI(r)
+	}
+
 	r.Get(PathHealth, Health(db)).Public()
 	r.Post(PathToken, Token(db, authMod, rbacSvc, secret)).Authenticated()
 	// PathUsersResolve is Public() at the router's access-gate level
