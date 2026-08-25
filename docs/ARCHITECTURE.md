@@ -25,7 +25,10 @@ Evidencia concreta, verificada en código el 2026-08-24:
 
 `iam` es la raíz de composición **única**: construye el motor una sola vez
 y lo expone por HTTP (Etapa 3) para que ninguna app nueva vuelva a montar
-`authority.Module`/`rbac.Service` contra su propia base.
+`authority.Module`/`rbac.Service` contra su propia base. `routes.Register`
+sirve como la raíz de composición de rutas HTTP del servidor — es el único
+lugar donde se invocan los métodos `MountAPI` de cualquier `router.APIModule`
+(ej. `authority.Module` con `/oauth/*` y `/logout`).
 
 ## 2. Qué NO es `iam`
 
