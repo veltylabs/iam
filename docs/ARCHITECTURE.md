@@ -117,33 +117,104 @@ su propio nivel de ámbito, y nunca "tenant". Un lector que conozca ambos
 repos no debe confundir "tenant de `iam`" con "tenant de `misitio`" —
 son capas distintas.
 
-## 5. Lo que queda deliberadamente abierto
+## 5. Etapa 2 — `project_id` (CERRADA, 2026-08-24)
 
-No se decide por omisión: se documenta como pregunta pendiente.
+Se eligió (a): columna `project_id` nativa en las 4 tablas de
+`tinywasm/rbac` (`Role`/`Permission`/`UserRole`/`RolePermission`), parte de
+la clave primaria — no una partición paralela dentro de `iam`. Ejecutada
+junto con la limpieza de la duplicación bidireccional que dejó el split
+`user`/`auth`/`rbac`: ver
+[[iam-bootstrap-and-rbac-split-cleanup]] (memoria) y
+`tinywasm/rbac` `v0.0.3`. `TestProjectsAreIsolated` en `tinywasm/rbac/tests`
+es la prueba que valida el aislamiento entre proyectos.
 
-- **Partición física de `project_id` (Etapa 2).** Dos candidatas: (a)
-  columna `project_id` añadida a las tablas de `tinywasm/rbac` — requiere
-  modificar esa librería compartida, afecta a todo consumidor existente
-  (`misitio`, `site_manager`) que hoy la usa single-tenant; (b) una
-  instancia lógica de `rbac.Service`/`authority.Module` por proyecto sobre
-  una partición de datos propia (prefijo de tabla o esquema), sin tocar
-  `tinywasm/rbac`. Requiere una ronda de Q&A propia antes de tener su
-  `PLAN_STAGE_2_*.md`.
-- **Forma exacta de la API HTTP (Etapa 3).** `tinywasm/mcp` ya tiene un
-  plan sin ejecutar para esto —
-  [`PLAN_bearer_auth_pending.md`](https://github.com/tinywasm/mcp/blob/main/docs/PLAN_bearer_auth_pending.md) —
-  que anticipa `user.GenerateAPIToken`/`user.AuthModeBearer` como el
-  mecanismo: un JWT opaco para el cliente, verificado por el servidor. Es
-  el punto de partida de la Etapa 3, no algo a re-decidir desde cero.
-- **Mecanismo exacto de sesión cross-dominio (Etapa 4).** Cookie de dominio
-  padre `.velty.cl` vs. JWT portado entre subdominios — trade-offs de
-  revocación y de acoplamiento a `*.velty.cl` sin decidir todavía.
+## 6. Etapa 3 — API Bearer para consumidores remotos (decisiones 2026-08-24)
+
+### 6.1 — Dos tokens, no uno
+
+Un solo JWT no puede servir ambos propósitos: la cookie de identidad
+(Etapa 4) viaja a **todo** `*.velty.cl` y por tanto no puede llevar roles
+de un proyecto específico — cualquier otro proyecto bajo el mismo dominio
+la recibiría también. Se separan:
+
+- **Token de identidad** (Etapa 4): solo `Sub`/`Exp`/`Iat` — prueba "quién
+  eres", nada más. Es exactamente `tinyjwt.Claims`, sin cambios.
+- **Token de autorización** (esta etapa): además de identidad, lleva
+  `ProjectID` + `Roles` — una app lo pide a `iam` cuando lo necesita, nunca
+  es la cookie compartida.
+
+### 6.2 — El payload de autorización no se agrega a `tinyjwt.Claims`
+
+`tinywasm/jwt`'s `Claims` declara explícitamente en su propio código:
+*"Closed on purpose: the registered claims this ecosystem actually uses.
+No `map[string]any` bag — that is how JWT libraries grow holes."* Agregarle
+`ProjectID`/`Roles` violaría esa decisión ya tomada — verificado antes de
+proponerlo, no después.
+
+En su lugar, `tinywasm/jwt` gana una extensión **aditiva**: `Sign`/`Verify`
+siguen existiendo sin cambios para el caso simple (`Claims` puro); un
+`SignPayload`/`VerifyPayload` nuevo firma/verifica cualquier payload que
+embeba `Claims` (vía una interfaz mínima `Base() Claims`, satisfecha
+gratis por embedding — composición de Go, no reflexión). `iam` define su
+propio tipo `AuthClaims{jwt.Claims; ProjectID string; Roles []string}` en
+`auth/session/jwt` (mismo repo que ya tiene `GenerateAPIToken`) — reusa el
+motor de firma HS256 sin que `tinywasm/jwt` conozca RBAC. Detalle
+ejecutable en `PLAN_STAGE_3_BEARER_API.md`.
+
+### 6.3 — TTL diferenciado por rol
+
+`rbac.Role` gana un campo `SessionTTL int64` (0 = usar el default). El
+default es **30 minutos**. Al emitir un token de autorización, `iam` usa
+el **más restrictivo** (menor) entre los `SessionTTL` de los roles que el
+usuario tiene en ese proyecto — cerrado por defecto: un rol sin
+`SessionTTL` declarado no alarga la sesión de otro rol más sensible.
+
+**Por qué no revocación explícita:** un TTL corto + renovación automática
+acota la ventana de "rol revocado pero token aún vivo" a, como mucho, el
+TTL vigente — sin necesitar una lista de tokens revocados consultada en
+cada verificación. Se revisita si aparece un caso real que lo exija.
+
+### 6.4 — Autenticación de la app: client credentials por proyecto
+
+La cookie de identidad prueba quién es el **usuario**, no que la app que
+la reenvía es realmente `misitio` y no un sitio impostor bajo el mismo
+dominio padre. Cada proyecto registrado en `iam` recibe un `client_id` +
+`client_secret` (estilo OAuth2 client credentials) al darse de alta. El
+endpoint que emite el token de autorización exige ambas cosas: la cookie
+de identidad (quién es el usuario) y el secreto del proyecto (qué app lo
+pide). Sin el secreto, cualquier código bajo `*.velty.cl` podría pedir
+tokens para un proyecto ajeno.
+
+## 7. Etapa 4 — SSO cross-dominio (decisiones 2026-08-24)
+
+- **Mecanismo:** cookie de dominio padre `.velty.cl`, no JWT portado por
+  redirect. `router.Cookie` ya declara un campo `Domain` (sin usar hoy por
+  `auth/session/jwt.Strategy`); `SameSite=Strict` funciona entre
+  subdominios del mismo sitio registrable (`velty.cl`), así que no hace
+  falta relajarlo a `Lax`/`None`. El navegador la envía solo a `*.velty.cl`,
+  sin código adicional en cada app consumidora.
+- **Subdominio de `iam`:** `iam.velty.cl` — coherente con el patrón ya
+  usado (`misitio.velty.cl`), en la misma zona/cuenta Cloudflare "velty"
+  (ver memoria `cloudflare-velty-cl-worker`).
+- **TTL de la cookie de identidad:** 7 días — igual al `TTLSession` que ya
+  usan `iam`/`misitio` para su cookie de sesión local hoy. No arriesga
+  permisos obsoletos (no lleva roles), así que puede ser más largo que el
+  token de autorización.
+
+## 8. Lo que sigue quedando fuera de este repo
+
 - **Migración de `misitio` para consumir `iam` remotamente.** No es un plan
   de este repo — `misitio` es un repo distinto con su propio `docs/PLAN.md`.
   Este repo solo entrega el servicio; el consumo remoto por `misitio` es un
-  plan futuro dispatchable dentro de `veltylabs/misitio`.
+  plan futuro dispatchable dentro de `veltylabs/misitio`, y depende de que
+  la Etapa 3 de este repo exista primero.
+- **Panel de administración de `iam`** (`web/client.go`, `modules/`) —
+  mencionado en `AGENTS.md` Restricción #1 como parte legítima de este
+  repo, pero sin diseñar todavía: qué gestiona exactamente (altas de
+  proyecto, de client credentials, de roles) necesita su propia ronda de
+  preguntas.
 
-## 6. Dependencias
+## 9. Dependencias
 
 ```mermaid
 flowchart TD

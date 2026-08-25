@@ -31,6 +31,7 @@ flowchart TD
 
 ## Estado
 
-Etapa 1 en curso: portar el motor de identidad+RBAC desde
-`veltylabs/misitio`. Todavía no expone API HTTP (Etapa 3) ni sesión SSO
-cross-dominio (Etapa 4) — ver [`docs/PLAN.md`](docs/PLAN.md).
+Motor de identidad+RBAC portado y con `project_id` nativo (Etapas 1-2,
+ejecutadas). Etapas 3 (API Bearer, tokens de autorización por proyecto) y
+4 (cookie SSO entre `*.velty.cl`) tienen plan listo para ejecutar, sin
+código todavía — ver [`docs/PLAN.md`](docs/PLAN.md).
