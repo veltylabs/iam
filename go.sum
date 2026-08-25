@@ -51,6 +51,8 @@ github.com/tinywasm/goflare v0.5.17 h1:4ZSJm3psGTznE7dz7oCZbRuYz9i0f1gWufESmGTdW
 github.com/tinywasm/goflare v0.5.17/go.mod h1:te6CqrqIxCFS3SoBo52t3Fs53dLpPgqZJqy1pmnMOZ0=
 github.com/tinywasm/goflare v0.5.18 h1:TV176hAfmJlpfBOomuy+Se4WS18Y3rhAmTNZKu1ld6A=
 github.com/tinywasm/goflare v0.5.18/go.mod h1:te6CqrqIxCFS3SoBo52t3Fs53dLpPgqZJqy1pmnMOZ0=
+github.com/tinywasm/goflare v0.5.19 h1:x2+Ku5tnNwNyKi8WoMbwG1cpa/awj1InnBOP/UeAL1c=
+github.com/tinywasm/goflare v0.5.19/go.mod h1:te6CqrqIxCFS3SoBo52t3Fs53dLpPgqZJqy1pmnMOZ0=
 github.com/tinywasm/html v0.0.18 h1:5oBQzaewM7xsnfQEQO6R35OAxcXVeMxn2+9ETYuyees=
 github.com/tinywasm/html v0.0.18/go.mod h1:j04HaIfBRCRAwicKJk3IFgTwIykGVC0oSDaaAI+7Oiw=
 github.com/tinywasm/image v0.1.0 h1:66ixBisq+gF8UA+nQ6mUdrLX99h5BEU9HfMKGmzf/As=
