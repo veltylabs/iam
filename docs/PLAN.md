@@ -22,9 +22,12 @@ ya tomadas con el mantenedor.
    días) y uno de **autorización** (project-scoped, `ProjectID`+`Roles`
    embebidos, TTL 30 min por defecto — diferenciado por rol vía
    `rbac.Role.SessionTTL`).
-2. El payload de autorización (`AuthClaims`) vive en `veltylabs/iam`, no en
-   `tinywasm/auth` — `auth` nunca importa `rbac`. `tinywasm/jwt` gana
-   `SignPayload`/`VerifyPayload` genéricos, aditivos, sin tocar `Claims`.
+2. El payload de autorización usa claims JWT/OAuth2 estándar, no campos
+   caseros de RBAC: `tinyjwt.Claims` gana `Aud` (project_id) y
+   `Scope []string` (códigos de rol) — aditivo, `Sign`/`Verify`/`NewClaims`
+   sin cambios. `tinywasm/jwt` nunca importa `rbac` ni conoce esas
+   palabras, solo "audience"/"scope". No hay un segundo tipo de claims
+   (`AuthClaims`) que decodificar — descartado, ver `ARCHITECTURE.md` §6.2.
 3. Sin revocación explícita — TTL corto + renovación automática.
 4. Cada proyecto consumidor se autentica ante `iam` con `client_id`/
    `client_secret` propio (bcrypt, mismo mecanismo que

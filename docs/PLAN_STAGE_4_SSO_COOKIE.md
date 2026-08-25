@@ -103,7 +103,8 @@ authMod.SetStrategy(strategy)
 ```
 
 `secret` es el mismo secreto HS256 que `IssueAuthToken` (Etapa 3) usa para
-firmar `AuthClaims` — **un solo secreto para todo `iam`**, no dos. Vive
+firmar el token de autorización (`Claims` con `Aud`/`Scope` poblados vía
+`jwt.NewScopedClaims`) — **un solo secreto para todo `iam`**, no dos. Vive
 donde ya vive cualquier otro secreto de `iam` (variable de entorno vía
 `tinywasm/env`/`osenv`, igual que `GOOGLE_CLIENT_SECRET` — ver Etapa 1,
 `config/auth.go`). Añade la constante correspondiente (`EnvJWTSecret =

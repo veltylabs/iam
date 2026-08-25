@@ -16,118 +16,85 @@ monte `authority.Module`/`rbac.Service` de nuevo en cada app, y sin que
 ## La regla que gobierna esta etapa
 
 ```
-El motor de firma (tinywasm/jwt) no sabe qué hay dentro del payload.
-auth no sabe qué es un rol. Solo iam — la única composition root que
-importa auth Y rbac — construye el payload que combina ambos.
+tinywasm/jwt solo conoce vocabulario JWT estándar (audience, scope).
+Nunca ve las palabras "project" ni "role" — esas las pone iam al llenar
+los campos, no al definirlos.
 ```
 
 Esto no es una preferencia estética: es la regla `auth` nunca importa
 `rbac` que ya rige todo el ecosistema (ver `tinywasm/auth`
-`docs/ARCHITECTURE.md`). Un tipo `AuthClaims{..., Roles []string}` dentro
-de `tinywasm/auth` la rompería tan silenciosamente como el vestigio que ya
-se limpió en la Etapa 1/2 — por eso `AuthClaims` vive en **`iam`**, no en
-`auth/session/jwt` (que sí es donde vive `GenerateAPIToken`, un caso
-distinto: ese token solo lleva identidad, nunca roles).
+`docs/ARCHITECTURE.md`), aplicada un nivel más abajo — a `tinywasm/jwt`,
+del que `auth` depende. Si el tipo `Claims` tuviera campos llamados
+`ProjectID`/`Roles`, esa capa base "sabría" conceptualmente que existe
+RBAC, reintroduciendo tan silenciosamente como el vestigio ya limpiado en
+la Etapa 1/2 el mismo acoplamiento. `Aud`/`Scope` son vocabulario JWT
+genérico — `iam` es quien decide que `Aud` significa "project_id" y
+`Scope` significa "códigos de rol"; `tinywasm/jwt` nunca lo sabe.
 
 ## Qué se construye — verificado contra el código real de `tinywasm/jwt`
 
-`Claims{Sub, Exp, Iat}` con su `EncodeFields`/`DecodeFields` en
-`tinywasm/jwt/jwt.go` **no cambia**. Se añade, en el mismo archivo, de
-forma estrictamente aditiva:
+`Claims{Sub, Exp, Iat}` en `tinywasm/jwt/jwt.go` gana dos campos, con
+nombres del vocabulario **estándar** de JWT/OAuth2 — no de RBAC:
 
 ```go
-// BaseClaims is satisfied by any payload that carries the fields Sign/
-// Verify need to check expiry and refuse an empty subject — regardless of
-// whatever extra fields the caller's payload adds. Claims satisfies it
-// trivially; a type that embeds Claims satisfies it for free (Go method
-// promotion), with zero repeated code.
-type BaseClaims interface {
-	model.Encodable
-	Base() Claims
-}
+type Claims struct {
+	Sub   string   // subject: who the token authenticates
+	Exp   int64    // expiry, unix seconds
+	Iat   int64    // issued at, unix seconds
 
-// Base lets Claims itself satisfy BaseClaims.
-func (c Claims) Base() Claims { return c }
+	// Aud is the RFC 7519 "audience" claim: who/what the token is scoped
+	// to. "" means unscoped — an identity-only token (unchanged meaning
+	// from before this field existed).
+	Aud string
 
-// SignPayload signs any BaseClaims payload — Sign(secret, Claims) stays
-// the shortcut for the common case (Claims alone), unchanged, calling
-// this internally.
-func SignPayload(secret []byte, payload BaseClaims) (string, error) {
-	base := payload.Base()
-	if base.Sub == "" {
-		return "", ErrEmptySubject
-	}
-	if len(secret) == 0 {
-		return "", ErrEmptySecret
-	}
-	var h string
-	if err := json.Encode(header{Alg: algHS256, Typ: typJWT}, &h); err != nil {
-		return "", err
-	}
-	var p string
-	if err := json.Encode(payload, &p); err != nil {
-		return "", err
-	}
-	signingInput := base64.URLEncode([]byte(h)) + "." + base64.URLEncode([]byte(p))
-	return signingInput + "." + sign(secret, signingInput), nil
-}
-
-// VerifyPayload authenticates a token and decodes it into `into` (any
-// BaseClaims — call with a pointer, e.g. &AuthClaims{}). Same two-channel
-// contract as Verify: error means the CALLER is broken, Outcome means what
-// the TOKEN is.
-func VerifyPayload(secret []byte, token string, into BaseClaims) (Outcome, error) {
-	if len(secret) == 0 {
-		return Forged, ErrEmptySecret
-	}
-	parts := fmt.Split(token, ".")
-	if len(parts) != 3 {
-		return Forged, nil
-	}
-	expected := sign(secret, parts[0]+"."+parts[1])
-	if !hmac.HMACEqual([]byte(parts[2]), []byte(expected)) {
-		return Forged, nil
-	}
-	raw, err := base64.URLDecode(parts[1])
-	if err != nil {
-		return Forged, nil
-	}
-	dec, ok := into.(model.Decodable)
-	if !ok {
-		return Forged, fmt.Err("jwt", "payload", "not-decodable")
-	}
-	if err := json.Decode(string(raw), dec); err != nil {
-		return Forged, nil
-	}
-	base := into.Base()
-	if base.Exp <= 0 || base.Sub == "" {
-		return Forged, nil
-	}
-	if now() > base.Exp+Leeway {
-		return Expired, nil
-	}
-	return Valid, nil
+	// Scope lists what the subject is allowed to do within Aud. nil means
+	// no scope claims — same as Aud, an identity-only token leaves this
+	// empty. tinywasm/jwt does not interpret these strings; a caller
+	// scoping a token to a project fills Aud with a project id and Scope
+	// with whatever role vocabulary that project uses (see
+	// veltylabs/iam's use in config/token.go) — this package never says
+	// "role" or "project", only "audience" and "scope".
+	Scope []string
 }
 ```
 
-`into` debe ser un pointer que implementa tanto `BaseClaims` (para leer
-`Base()` tras decodificar) como `model.Decodable` (para que `DecodeFields`
-lo pueble) — `*AuthClaims` en la Etapa 3 satisface ambos por embedding, ver
-§1.2.
+`EncodeFields`/`DecodeFields` ganan las dos líneas correspondientes (sigue
+el mismo patrón que `sub`/`exp`/`iat` ya tienen — `Scope` es un array,
+mismo patrón `w.Array("scope", len(...))`/`r.Array("scope")` que usa
+cualquier otro campo `[]string` en el ecosistema, ej.
+`api.RoleInfo`-adjacent code en `misitio`).
 
-**No dupliques la lógica de `Sign`/`Verify` existentes.** `SignPayload`/
-`VerifyPayload` son una generalización; si al implementarlos notas que
-`Sign`/`Verify` podrían reescribirse en términos de estas dos (`Sign(secret,
-c) == SignPayload(secret, c)` porque `Claims` ya satisface `BaseClaims`),
-hazlo — menos código, mismo comportamiento, y una sola ruta que probar.
+`NewClaims(subject string, ttl int) Claims` **no cambia** — sigue
+devolviendo `Aud`/`Scope` en su zero value (`""`/`nil`), así que todo
+consumidor existente (`auth/session/jwt.Strategy.Issue`,
+`GenerateAPIToken`) sigue produciendo tokens de identidad pura, sin tocar
+una línea de su propio código. Se añade, aditiva, una segunda
+constructora para el caso con alcance:
+
+```go
+// NewScopedClaims builds a claim set like NewClaims, additionally scoped
+// to aud with the given scope — for tokens that authorize actions within
+// a specific audience (e.g. a project), not just identity.
+func NewScopedClaims(subject, aud string, scope []string, ttl int) Claims {
+	c := NewClaims(subject, ttl)
+	c.Aud = aud
+	c.Scope = scope
+	return c
+}
+```
+
+**`Sign`/`Verify` no cambian en absoluto** — ya firman/verifican
+`Claims` completo, y `Claims` ahora simplemente tiene dos campos más.
+No hay tipo nuevo, no hay mecanismo de firma paralelo: un token de
+autorización se firma con el mismo `jwt.Sign(secret, claims)` de siempre,
+sobre un `Claims` construido con `NewScopedClaims` en vez de `NewClaims`.
 
 ---
 
 ## Archivos a crear/modificar
 
 ```
-tinywasm/jwt/jwt.go              // modificar: BaseClaims, Base(), SignPayload, VerifyPayload
-veltylabs/iam/config/authclaims.go   // nuevo
+tinywasm/jwt/jwt.go              // modificar: Claims gana Aud/Scope, NewScopedClaims
 veltylabs/iam/config/projects.go     // nuevo — modelo Project (client credentials)
 veltylabs/iam/config/token.go        // nuevo — emisión del token de autorización
 veltylabs/iam/routes/routes.go       // nuevo — primera vez que iam tiene rutas HTTP
@@ -138,52 +105,7 @@ veltylabs/iam/tests/token_test.go    // nuevo
 
 ## Pasos
 
-### 3.1 — `veltylabs/iam/config/authclaims.go`
-
-```go
-package config
-
-import (
-	"github.com/tinywasm/jwt"
-	"github.com/tinywasm/model"
-)
-
-// AuthClaims is the authorization token's payload: identity (embedded
-// jwt.Claims) plus the project-scoped roles it grants. It lives here, not
-// in tinywasm/auth, because auth never imports rbac — only this
-// composition root sees both (see ARCHITECTURE.md §6.2).
-type AuthClaims struct {
-	jwt.Claims
-	ProjectID string
-	Roles     []string
-}
-
-func (c AuthClaims) EncodeFields(w model.FieldWriter) {
-	c.Claims.EncodeFields(w)
-	w.String("project_id", c.ProjectID)
-	arr := w.Array("roles", len(c.Roles))
-	for _, r := range c.Roles {
-		arr.String(r)
-	}
-	arr.Close()
-}
-
-func (c *AuthClaims) DecodeFields(r model.FieldReader) {
-	c.Claims.DecodeFields(r)
-	c.ProjectID, _ = r.String("project_id")
-	if ar, ok := r.Array("roles"); ok {
-		c.Roles = make([]string, ar.Len())
-		for i := 0; i < ar.Len(); i++ {
-			c.Roles[i] = ar.String(i)
-		}
-	}
-}
-```
-
-`IsNil`/`Base` llegan gratis por el embedding de `jwt.Claims` (promoción de
-métodos) — no los reescribas.
-
-### 3.2 — `veltylabs/iam/config/projects.go`
+### 3.1 — `veltylabs/iam/config/projects.go`
 
 Modelo nuevo, propio de `iam` (no de `rbac`: `rbac` no conoce credenciales
 de aplicación, solo roles/permisos). Sigue el mismo patrón `model.Definition`
@@ -274,12 +196,14 @@ func VerifyProjectSecret(db *orm.DB, projectID, plainSecret string) (bool, error
 var ErrProjectNotFound = fmt.Err("project", "not", "found")
 ```
 
-### 3.3 — `veltylabs/iam/config/token.go`
+### 3.2 — `veltylabs/iam/config/token.go`
 
 Orquesta auth (identidad ya resuelta por la cookie/sesión activa) + rbac
-(roles del proyecto) + el `SessionTTL` más restrictivo, y firma con
-`jwt.SignPayload` — **no** con `tinywasm/auth/session/jwt.GenerateAPIToken`
-(ese es para tokens sin roles, ver ARCHITECTURE.md §6.1).
+(roles del proyecto) + el `SessionTTL` más restrictivo, y firma con el
+`jwt.Sign` **existente**, sobre un `Claims` construido con
+`jwt.NewScopedClaims` — **no** con
+`tinywasm/auth/session/jwt.GenerateAPIToken` (ese es para tokens sin
+scope, ver ARCHITECTURE.md §6.1).
 
 ```go
 package config
@@ -294,7 +218,8 @@ const DefaultAuthTokenTTL = 30 * 60 // 30 minutos — ver ARCHITECTURE.md §6.3
 // IssueAuthToken firma un token de autorizacion project-scoped para
 // userID, usando el SessionTTL mas restrictivo entre sus roles en
 // projectID (0 => DefaultAuthTokenTTL). secret es el mismo secreto HS256
-// que usa el resto de la sesion de iam.
+// que usa el resto de la sesion de iam. Aud lleva projectID, Scope lleva
+// los codigos de rol — vocabulario JWT estandar, ver ARCHITECTURE.md §6.2.
 func IssueAuthToken(rbacSvc *rbac.Service, secret []byte, projectID, userID string) (string, error) {
 	roles, err := rbacSvc.GetUserRoles(projectID, userID)
 	if err != nil {
@@ -308,8 +233,8 @@ func IssueAuthToken(rbacSvc *rbac.Service, secret []byte, projectID, userID stri
 			ttl = int(r.SessionTTL)
 		}
 	}
-	claims := jwt.NewClaims(userID, ttl)
-	return jwt.SignPayload(secret, &AuthClaims{Claims: claims, ProjectID: projectID, Roles: roleCodes})
+	claims := jwt.NewScopedClaims(userID, projectID, roleCodes, ttl)
+	return jwt.Sign(secret, claims)
 }
 ```
 
@@ -319,9 +244,14 @@ Esto asume `rbac.Role` ya tiene el campo `SessionTTL int64` — agrégalo en
 "usa el default"), corre `ormc`, publica una nueva versión de
 `tinywasm/rbac` con `gopush`, y actualiza la dependencia en `iam` antes de
 escribir este archivo. **No dupliques el campo en otro lado**: `SessionTTL`
-vive en `Role`, no en `AuthClaims` ni en `Project`.
+vive en `Role`, no en `Claims` ni en `Project`.
 
-### 3.4 — Rutas (`veltylabs/iam/routes/routes.go`)
+Del lado de quien verifica (fuera de alcance de este repo, pero para que
+el diseño quede completo): `jwt.Verify(secret, token)` devuelve el mismo
+`Claims` de siempre — `claims.Aud`/`claims.Scope` ya están ahí, sin type
+assertions ni un segundo tipo que decodificar.
+
+### 3.3 — Rutas (`veltylabs/iam/routes/routes.go`)
 
 Primera vez que `iam` expone HTTP. Sigue el patrón de
 `misitio/routes/routes.go` (`Register(r router.Router, deps...)`, un
@@ -376,7 +306,7 @@ func Token(db *orm.DB, rbacSvc *rbac.Service, secret []byte) router.HandlerFunc 
 `TokenRequest`/`TokenResponse` con `Encodable`/`Decodable` — mismo patrón
 que `routes.MeResponse` en `misitio`, no reinventes el mecanismo de codec.
 
-### 3.5 — `web/server.go` / `edge/main.go`
+### 3.4 — `web/server.go` / `edge/main.go`
 
 Mismo patrón que `misitio/web/server.go`/`edge/main.go` (ya leídos y
 portados en la Etapa 1): construir el backend (auth+rbac+projects),
@@ -390,15 +320,19 @@ código — coordínalo con el mantenedor antes de desplegar, no lo asumas.
 
 ## Reglas de calidad
 
-- **`tinywasm/jwt` no gana ningún import nuevo hacia `model`-adyacentes que
-  no tuviera ya** (`model.Encodable`/`Decodable` ya eran parte de su
-  superficie vía `Claims`). Si `SignPayload`/`VerifyPayload` te piden un
-  import que el paquete no tenía, es señal de que el diseño se desvió del
-  de este plan — revisa antes de agregarlo.
-- **`AuthClaims` no vive en `tinywasm/auth`.** Si en algún punto sientes
-  la tentación de moverlo ahí "porque ya existe `GenerateAPIToken`", relee
-  §6.2 de `ARCHITECTURE.md` — es la regla `auth` nunca importa `rbac`,
-  no una preferencia de organización de archivos.
+- **`tinywasm/jwt` sigue sin importar nada de `rbac` ni conocer el
+  concepto de "rol" o "proyecto".** `Claims.Aud`/`Claims.Scope` son
+  `string`/`[]string` genéricos con nombres estándar JWT/OAuth2 — que
+  `iam` los llene con `projectID` y códigos de rol es una decisión de
+  quien FIRMA (`config/token.go`), no algo que `jwt` sabe ni valida. Si
+  sientes la tentación de renombrarlos a `ProjectID`/`Roles` dentro de
+  `tinywasm/jwt` "para que quede más claro", no lo hagas — eso reintroduce
+  exactamente el acoplamiento que este diseño evita (ver `ARCHITECTURE.md`
+  §6.2, las 3 opciones consideradas y por qué se descartaron la 1 y la 2).
+- **No hay un segundo tipo de claims que decodificar.** `jwt.Verify` sigue
+  devolviendo el mismo `Claims` de siempre — no crees un
+  `AuthClaims`/`ProjectClaims` en `iam` (ni en ningún otro repo) para
+  "envolver" `Aud`/`Scope`; ya están en el tipo base, sin type assertions.
 - **`client_secret` nunca se guarda en claro** — solo su hash (`bcrypt`,
   mismo mecanismo que `email_password`). `CreateProject` lo devuelve UNA
   vez, en el momento de creación; no hay un `GetProjectSecret`.
@@ -408,11 +342,16 @@ código — coordínalo con el mantenedor antes de desplegar, no lo asumas.
 ## Criterios de aceptación
 
 - [ ] `go test ./...` en `tinywasm/jwt`, `tinywasm/rbac` e `iam`, todo verde.
-- [ ] Un test en `tinywasm/jwt` prueba `SignPayload`/`VerifyPayload` con un
-      tipo de payload custom (no solo `Claims`) — la doctrina "an API is
-      not published until a consumer-shaped test proves it"
+- [ ] Un test en `tinywasm/jwt` prueba `NewScopedClaims` + `Sign` + `Verify`:
+      el roundtrip preserva `Aud` y `Scope` exactos (con `Scope` de más de
+      un elemento). La doctrina "an API is not published until a
+      consumer-shaped test proves it"
       (`tinywasm/sitec/docs/CONSTRUCTION_HARNESS.md`) aplica aquí: si es
       incómodo de escribir, el diseño tiene un defecto, no el test.
+- [ ] Un test en `tinywasm/jwt` confirma que `NewClaims` (el constructor ya
+      existente, sin `Aud`/`Scope`) sigue produciendo un token que `Verify`
+      decodifica con `Aud == ""` y `Scope == nil` — comportamiento no roto
+      para quien no usa los campos nuevos.
 - [ ] Un test en `iam/tests` prueba el flujo completo: usuario con un rol
       que tiene `SessionTTL` propio → `IssueAuthToken` usa ESE TTL, no el
       default.
@@ -421,6 +360,7 @@ código — coordínalo con el mantenedor antes de desplegar, no lo asumas.
       la sesión (`ctx.UserID()`), nunca el que llegue en el body si
       alguien intenta mandarlo.
 - [ ] `grep -rn "Roles\s*\[\]string\|ProjectID" /home/cesar/Dev/Project/tinywasm/auth --include="*.go"` → vacío: `auth` sigue sin conocer roles ni proyectos.
+- [ ] `grep -n "Roles\s*\[\]string\|ProjectID\s*string" /home/cesar/Dev/Project/tinywasm/jwt/jwt.go` → vacío: `jwt` gana `Aud`/`Scope` (nombres estándar JWT/OAuth2), nunca el vocabulario específico de rbac.
 
 ## Fuera de alcance
 

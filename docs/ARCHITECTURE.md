@@ -140,26 +140,41 @@ la recibiría también. Se separan:
 - **Token de identidad** (Etapa 4): solo `Sub`/`Exp`/`Iat` — prueba "quién
   eres", nada más. Es exactamente `tinyjwt.Claims`, sin cambios.
 - **Token de autorización** (esta etapa): además de identidad, lleva
-  `ProjectID` + `Roles` — una app lo pide a `iam` cuando lo necesita, nunca
-  es la cookie compartida.
+  `Aud` (project_id) + `Scope` (códigos de rol) — una app lo pide a `iam`
+  cuando lo necesita, nunca es la cookie compartida. Por qué son claims
+  JWT estándar y no campos caseros de RBAC: ver §6.2.
 
-### 6.2 — El payload de autorización no se agrega a `tinyjwt.Claims`
+### 6.2 — El payload de autorización usa claims JWT estándar, no campos caseros de RBAC
 
 `tinywasm/jwt`'s `Claims` declara explícitamente en su propio código:
 *"Closed on purpose: the registered claims this ecosystem actually uses.
 No `map[string]any` bag — that is how JWT libraries grow holes."* Agregarle
-`ProjectID`/`Roles` violaría esa decisión ya tomada — verificado antes de
-proponerlo, no después.
+campos con nombres de dominio propio (`ProjectID`, `Roles`) violaría esa
+intención — acoplaría la capa más base (de la que `auth` depende) al
+concepto de RBAC, la misma clase de acoplamiento que se limpió en la
+Etapa 1/2, un nivel más abajo.
 
-En su lugar, `tinywasm/jwt` gana una extensión **aditiva**: `Sign`/`Verify`
-siguen existiendo sin cambios para el caso simple (`Claims` puro); un
-`SignPayload`/`VerifyPayload` nuevo firma/verifica cualquier payload que
-embeba `Claims` (vía una interfaz mínima `Base() Claims`, satisfecha
-gratis por embedding — composición de Go, no reflexión). `iam` define su
-propio tipo `AuthClaims{jwt.Claims; ProjectID string; Roles []string}` en
-`auth/session/jwt` (mismo repo que ya tiene `GenerateAPIToken`) — reusa el
-motor de firma HS256 sin que `tinywasm/jwt` conozca RBAC. Detalle
-ejecutable en `PLAN_STAGE_3_BEARER_API.md`.
+En vez de eso, `Claims` gana dos campos con **nombres registrados del
+propio estándar JWT/OAuth2**: `Aud` (*audience* — claim registrado en el
+RFC 7519, "a quién va dirigido el token") y `Scope []string` (qué permite
+— término que ya usa `tinywasm/git/github_auth.go` para OAuth, no un
+invento de esta sesión). `iam` los puebla con `project_id` y los códigos
+de rol respectivamente; `tinywasm/jwt` nunca ve esas palabras, solo ve
+"audience" y "scope" — el vocabulario que el estándar ya anticipó para
+exactamente este caso. Sin tipo nuevo, sin mecanismo de firma paralelo:
+`Sign`/`Verify`/`NewClaims` existentes seguirán funcionando sin cambios
+para el caso de identidad pura; una `NewScopedClaims` nueva puebla también
+`Aud`/`Scope`. Detalle ejecutable en `PLAN_STAGE_3_BEARER_API.md`.
+
+**Se consideraron 3 opciones antes de esta** (registro para no repetir el
+análisis): (a) extender `Claims` con `ProjectID`/`Roles` directo — mismo
+costo bajo que la elegida, pero acopla la capa base a terminología de
+RBAC; (b) no tocar `Claims`, generalizar `Sign`/`Verify` sobre cualquier
+payload y definir un tipo `AuthClaims` separado en `iam` — evita cualquier
+acoplamiento pero duplica el mecanismo de firma (dos rutas a mantener) para
+un problema que hoy solo tiene un consumidor (`auth`, verificado). Se
+eligió (c), este apartado, por dar la simplicidad de (a) sin su costo de
+acoplamiento semántico.
 
 ### 6.3 — TTL diferenciado por rol
 
