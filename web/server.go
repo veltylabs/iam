@@ -5,8 +5,8 @@ package main
 import (
 	"os"
 
+	"github.com/tinywasm/env"
 	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/goflare/devserver"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/server/httpd"
 	"github.com/tinywasm/storage/mem"
@@ -36,19 +36,21 @@ func main() {
 	// Local development uses simulated identities with no Google secrets.
 	// Production (edge/main.go) uses only Google OAuth and fails fast without them.
 
-	port := lookupArg("server_port")
+	port := env.Arg("server_port")
 	if port == "" {
 		port = DevPort
 	}
-	publicDir := lookupArg("server_public_dir")
+	publicDir := env.Arg("server_public_dir")
 	if publicDir == "" {
 		publicDir = DevPublicDir
 	}
 
-	srv := devserver.New(httpd.Config{
-		Port:      port,
-		PublicDir: publicDir,
-		Authn:     backend.Auth.Authenticate(),
+	srv := httpd.New(httpd.Config{
+		Port:           port,
+		PublicDir:      publicDir,
+		Authn:          backend.Auth.Authenticate(),
+		NoCache:        true,
+		RoutesEndpoint: true,
 	})
 	routes.Register(srv.Router(), db, backend.Auth, backend.RBAC, backend.JWTSecret)
 
@@ -58,16 +60,4 @@ func main() {
 	}
 }
 
-func lookupArg(key string) string {
-	prefix := "-" + key + "="
-	args := os.Args[1:]
-	for i, arg := range args {
-		if fmt.HasPrefix(arg, prefix) {
-			return fmt.Convert(arg).TrimPrefix(prefix).String()
-		}
-		if arg == "-"+key && i+1 < len(args) {
-			return args[i+1]
-		}
-	}
-	return ""
-}
+
