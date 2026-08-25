@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/tinywasm/auth/authority"
 	"github.com/tinywasm/model"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
@@ -20,9 +21,9 @@ const BindingD1 = api.BindingD1
 // directamente — el client_secret no puede vivir en un bundle WASM/JS
 // (ver ARCHITECTURE.md §6.4/§7). Sin llamador cross-origin, no hay
 // cabeceras CORS que emitir.
-func Register(r router.Router, db *orm.DB, rbacSvc *rbac.Service, secret []byte) {
+func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte) {
 	r.Get(PathHealth, Health(db)).Public()
-	r.Post(PathToken, Token(db, rbacSvc, secret)).Authenticated()
+	r.Post(PathToken, Token(db, authMod, rbacSvc, secret)).Authenticated()
 }
 
 // Health devuelve el manejador HTTP para la verificación de estado.
@@ -63,23 +64,38 @@ func (t *TokenRequest) DecodeFields(r model.FieldReader) {
 	t.ClientSecret, _ = r.String("client_secret")
 }
 
-// TokenResponse es la respuesta de POST /api/token.
+// TokenResponse es la respuesta de POST /api/token. Además del token de
+// autorización, lleva el perfil básico del usuario de la sesión —
+// Email/Name/Avatar, no Sub/Aud/Scope (eso vive en Token, ver
+// ARCHITECTURE.md §6.2) — para que un consumidor que ya está haciendo esta
+// llamada no necesite una segunda solo para mostrar "Hola, <nombre>": la
+// respuesta ya requiere sesión activa + client_secret válido, así que no
+// hay superficie nueva que exponer.
 type TokenResponse struct {
-	Token string
+	Token  string
+	Email  string
+	Name   string
+	Avatar string
 }
 
 func (t *TokenResponse) IsNil() bool { return t == nil }
 func (t *TokenResponse) EncodeFields(w model.FieldWriter) {
 	w.String("token", t.Token)
+	w.String("email", t.Email)
+	w.String("name", t.Name)
+	w.String("avatar", t.Avatar)
 }
 func (t *TokenResponse) DecodeFields(r model.FieldReader) {
 	t.Token, _ = r.String("token")
+	t.Email, _ = r.String("email")
+	t.Name, _ = r.String("name")
+	t.Avatar, _ = r.String("avatar")
 }
 
 // Token emite un token de autorización project-scoped para el usuario de
 // la sesión activa, si project_id/client_secret validan contra el
 // proyecto registrado.
-func Token(db *orm.DB, rbacSvc *rbac.Service, secret []byte) router.HandlerFunc {
+func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
 		userID := ctx.UserID()
@@ -106,7 +122,12 @@ func Token(db *orm.DB, rbacSvc *rbac.Service, secret []byte) router.HandlerFunc 
 			ctx.WriteStatus(500)
 			return
 		}
+		u, err := authMod.GetUser(userID)
+		if err != nil {
+			ctx.WriteStatus(500)
+			return
+		}
 		ctx.WriteStatus(200)
-		_ = ctx.Encode(&TokenResponse{Token: token})
+		_ = ctx.Encode(&TokenResponse{Token: token, Email: u.Email, Name: u.Name, Avatar: u.Avatar})
 	}
 }

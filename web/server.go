@@ -50,7 +50,7 @@ func main() {
 		PublicDir: publicDir,
 		Authn:     backend.Auth.Authenticate(),
 	})
-	routes.Register(srv.Router(), db, backend.RBAC, backend.JWTSecret)
+	routes.Register(srv.Router(), db, backend.Auth, backend.RBAC, backend.JWTSecret)
 
 	if err := srv.ListenAndServe(); err != nil {
 		fmt.Println(err)

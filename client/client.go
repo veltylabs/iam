@@ -46,23 +46,41 @@ func (t *tokenRequest) EncodeFields(w model.FieldWriter) {
 func (t *tokenRequest) DecodeFields(r model.FieldReader) {}
 
 type tokenResponse struct {
-	Token string
+	Token  string
+	Email  string
+	Name   string
+	Avatar string
 }
 
 func (t *tokenResponse) IsNil() bool                      { return t == nil }
 func (t *tokenResponse) EncodeFields(w model.FieldWriter) {}
 func (t *tokenResponse) DecodeFields(r model.FieldReader) {
 	t.Token, _ = r.String("token")
+	t.Email, _ = r.String("email")
+	t.Name, _ = r.String("name")
+	t.Avatar, _ = r.String("avatar")
+}
+
+// Identity is what FetchAuthzToken resolves for the caller's session: the
+// authorization claims (Sub/Aud/Scope) plus the profile fields iam's
+// /api/token response carries alongside them — a consumer showing "Hola,
+// <Name>" needs no second call.
+type Identity struct {
+	Claims tinyjwt.Claims
+	Email  string
+	Name   string
+	Avatar string
 }
 
 // FetchAuthzToken calls POST <iamBaseURL>/api/token server-to-server,
 // forwarding ssoCookieValue (the SSO cookie's value read off the caller's
 // own incoming request) so iam can identify the user, and clientSecret so
 // iam knows which project is asking. Returns the project-scoped
-// authorization token's claims — Aud is projectID, Scope is the user's
-// role codes in that project (see ARCHITECTURE.md §6.1/§6.2).
+// authorization claims — Aud is projectID, Scope is the user's role codes
+// in that project (see ARCHITECTURE.md §6.1/§6.2) — plus the user's basic
+// profile.
 //
-// The returned Claims are decoded WITHOUT verifying the HMAC signature
+// The claims are decoded WITHOUT verifying the HMAC signature
 // (tinyjwt.DecodeUnverified, not Verify): this response came directly from
 // iam over THIS SAME HTTPS call, not from an untrusted third party
 // presenting a token later — there is nothing to gain from re-checking a
@@ -70,14 +88,14 @@ func (t *tokenResponse) DecodeFields(r model.FieldReader) {
 // (ARCHITECTURE.md §6.2: the HS256 secret is internal to iam). Do not
 // change this to Verify — it would require sharing iam's secret, which is
 // exactly the acoplamiento this design avoids.
-func FetchAuthzToken(iamBaseURL, projectID, clientSecret, ssoCookieValue string) (tinyjwt.Claims, error) {
+func FetchAuthzToken(iamBaseURL, projectID, clientSecret, ssoCookieValue string) (Identity, error) {
 	if ssoCookieValue == "" {
-		return tinyjwt.Claims{}, ErrNoSSOSession
+		return Identity{}, ErrNoSSOSession
 	}
 
 	var body []byte
 	if err := json.Encode(&tokenRequest{ProjectID: projectID, ClientSecret: clientSecret}, &body); err != nil {
-		return tinyjwt.Claims{}, err
+		return Identity{}, err
 	}
 
 	resp, err := doSync(fetch.Post(iamBaseURL+"/api/token").
@@ -85,18 +103,22 @@ func FetchAuthzToken(iamBaseURL, projectID, clientSecret, ssoCookieValue string)
 		Header("Cookie", SSOCookieName+"="+ssoCookieValue).
 		Body(body))
 	if err != nil {
-		return tinyjwt.Claims{}, err
+		return Identity{}, err
 	}
 	if resp.Status == 401 || resp.Status == 403 {
-		return tinyjwt.Claims{}, ErrNoSSOSession
+		return Identity{}, ErrNoSSOSession
 	}
 	if resp.Status != 200 {
-		return tinyjwt.Claims{}, fmt.Errf("iam: POST /api/token returned status %d", resp.Status)
+		return Identity{}, fmt.Errf("iam: POST /api/token returned status %d", resp.Status)
 	}
 
 	var tr tokenResponse
 	if err := json.Decode(resp.Body(), &tr); err != nil {
-		return tinyjwt.Claims{}, err
+		return Identity{}, err
 	}
-	return tinyjwt.DecodeUnverified(tr.Token)
+	claims, err := tinyjwt.DecodeUnverified(tr.Token)
+	if err != nil {
+		return Identity{}, err
+	}
+	return Identity{Claims: claims, Email: tr.Email, Name: tr.Name, Avatar: tr.Avatar}, nil
 }

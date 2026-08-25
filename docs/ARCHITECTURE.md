@@ -212,6 +212,14 @@ cabeceras. `veltylabs/iam/client` es el cliente HTTP que hace exactamente
 esto (`FetchAuthzToken`), para que cada consumidor no reimplemente el
 mecanismo.
 
+**La respuesta también lleva el perfil básico** (`email`/`name`/`avatar`),
+no solo el token — `misitio` (y cualquier consumidor sin tabla de usuarios
+propia) necesita mostrar "Hola, &lt;nombre&gt;" sin una segunda llamada.
+Esto vive FUERA del JWT (`Claims` sigue cerrado — ver §6.2): son campos de
+la respuesta HTTP de `/api/token`, no claims firmados. `iam` ya resuelve
+esto con `authMod.GetUser(userID)`, mismo mecanismo que usaba internamente
+antes de esta etapa.
+
 ## 7. Etapa 4 — SSO cross-dominio (EJECUTADA, 2026-08-24)
 
 - **Mecanismo:** cookie de dominio padre `.velty.cl`, no JWT portado por

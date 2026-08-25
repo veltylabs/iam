@@ -59,7 +59,7 @@ func TestToken_WrongClientSecret403(t *testing.T) {
 		t.Fatalf("CreateProject: %v", err)
 	}
 
-	handler := routes.Token(backend.DB, backend.RBAC, backend.JWTSecret)
+	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret)
 	ctx := &mock.Context{}
 	ctx.SetUserID("user-1")
 	body, err := encodeTokenRequest(t, "proj-1", "wrong-secret")
@@ -81,10 +81,14 @@ func TestToken_UserIDFromSessionNeverFromBody(t *testing.T) {
 	if err := config.CreateProject(backend.DB, projectID, "Proj One", "correct-secret"); err != nil {
 		t.Fatalf("CreateProject: %v", err)
 	}
+	u, err := backend.Auth.CreateUser("session@test.com", "Session User", "")
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
 
-	handler := routes.Token(backend.DB, backend.RBAC, backend.JWTSecret)
+	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret)
 	ctx := &mock.Context{}
-	ctx.SetUserID("user-from-session")
+	ctx.SetUserID(u.Id)
 	// TokenRequest has no user id field at all — there is no way to smuggle
 	// one through the body even if an attacker tries to; this proves the
 	// emitted token's Sub is the SESSION's identity regardless.
@@ -110,8 +114,11 @@ func TestToken_UserIDFromSessionNeverFromBody(t *testing.T) {
 	if outcome != tinyjwt.Valid {
 		t.Fatalf("outcome: got %v, want valid", outcome)
 	}
-	if claims.Sub != "user-from-session" {
-		t.Errorf("sub: got %q, want %q (the session's identity)", claims.Sub, "user-from-session")
+	if claims.Sub != u.Id {
+		t.Errorf("sub: got %q, want %q (the session's identity)", claims.Sub, u.Id)
+	}
+	if resp.Email != "session@test.com" || resp.Name != "Session User" {
+		t.Errorf("profile: got email=%q name=%q", resp.Email, resp.Name)
 	}
 }
 

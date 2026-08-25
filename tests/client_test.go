@@ -30,11 +30,11 @@ func TestFetchAuthzToken_ForwardsCookieAndReturnsClaims(t *testing.T) {
 		w.WriteHeader(200)
 		// A token with Sub/Aud/Scope — this test only cares that
 		// DecodeUnverified round-trips what iam sent, not that it re-signs it.
-		w.Write([]byte(`{"token":"` + testToken(t) + `"}`))
+		w.Write([]byte(`{"token":"` + testToken(t) + `","email":"u@test.com","name":"U Test","avatar":"https://x/a.png"}`))
 	}))
 	defer srv.Close()
 
-	claims, err := client.FetchAuthzToken(srv.URL, "misitio", "the-secret", "cookie-value-123")
+	id, err := client.FetchAuthzToken(srv.URL, "misitio", "the-secret", "cookie-value-123")
 	if err != nil {
 		t.Fatalf("FetchAuthzToken: %v", err)
 	}
@@ -44,11 +44,14 @@ func TestFetchAuthzToken_ForwardsCookieAndReturnsClaims(t *testing.T) {
 	if !containsAll(gotBody, `"project_id":"misitio"`, `"client_secret":"the-secret"`) {
 		t.Errorf("body did not carry project_id/client_secret: %q", gotBody)
 	}
-	if claims.Sub != "user-1" || claims.Aud != "misitio" {
-		t.Errorf("claims: got %+v", claims)
+	if id.Claims.Sub != "user-1" || id.Claims.Aud != "misitio" {
+		t.Errorf("claims: got %+v", id.Claims)
 	}
-	if len(claims.Scope) != 1 || claims.Scope[0] != "editor" {
-		t.Errorf("scope: got %+v", claims.Scope)
+	if len(id.Claims.Scope) != 1 || id.Claims.Scope[0] != "editor" {
+		t.Errorf("scope: got %+v", id.Claims.Scope)
+	}
+	if id.Email != "u@test.com" || id.Name != "U Test" || id.Avatar != "https://x/a.png" {
+		t.Errorf("profile: got %+v", id)
 	}
 }
 
