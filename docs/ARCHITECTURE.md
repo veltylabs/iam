@@ -60,9 +60,8 @@ tenga membresía.
 para participar del SSO. Un proyecto en dominio propio ajeno necesitaría un
 mecanismo distinto (fuera de alcance por ahora).
 
-**Estado:** decisión de alcance tomada; el mecanismo concreto (cookie de
-dominio padre vs. JWT portado entre dominios) es la Etapa 4, todavía sin
-diseñar en detalle.
+**Estado: ejecutada.** El mecanismo concreto es cookie de dominio padre
+(`Domain: ".velty.cl"`, no JWT portado entre dominios) — ver §7.
 
 ### 3.3 — Roles con ámbito por proyecto
 
@@ -128,7 +127,7 @@ junto con la limpieza de la duplicación bidireccional que dejó el split
 `tinywasm/rbac` `v0.0.3`. `TestProjectsAreIsolated` en `tinywasm/rbac/tests`
 es la prueba que valida el aislamiento entre proyectos.
 
-## 6. Etapa 3 — API Bearer para consumidores remotos (decisiones 2026-08-24)
+## 6. Etapa 3 — API Bearer para consumidores remotos (EJECUTADA, 2026-08-24)
 
 ### 6.1 — Dos tokens, no uno
 
@@ -162,9 +161,9 @@ invento de esta sesión). `iam` los puebla con `project_id` y los códigos
 de rol respectivamente; `tinywasm/jwt` nunca ve esas palabras, solo ve
 "audience" y "scope" — el vocabulario que el estándar ya anticipó para
 exactamente este caso. Sin tipo nuevo, sin mecanismo de firma paralelo:
-`Sign`/`Verify`/`NewClaims` existentes seguirán funcionando sin cambios
-para el caso de identidad pura; una `NewScopedClaims` nueva puebla también
-`Aud`/`Scope`. Detalle ejecutable en `PLAN_STAGE_3_BEARER_API.md`.
+`Sign`/`Verify`/`NewClaims` existentes siguen funcionando sin cambios para
+el caso de identidad pura; una `NewScopedClaims` nueva puebla también
+`Aud`/`Scope` (`tinywasm/jwt` `v0.1.16`).
 
 **Se consideraron 3 opciones antes de esta** (registro para no repetir el
 análisis): (a) extender `Claims` con `ProjectID`/`Roles` directo — mismo
@@ -200,7 +199,7 @@ de identidad (quién es el usuario) y el secreto del proyecto (qué app lo
 pide). Sin el secreto, cualquier código bajo `*.velty.cl` podría pedir
 tokens para un proyecto ajeno.
 
-## 7. Etapa 4 — SSO cross-dominio (decisiones 2026-08-24)
+## 7. Etapa 4 — SSO cross-dominio (EJECUTADA, 2026-08-24)
 
 - **Mecanismo:** cookie de dominio padre `.velty.cl`, no JWT portado por
   redirect. `router.Cookie` ya declara un campo `Domain` (sin usar hoy por
@@ -237,7 +236,7 @@ flowchart TD
     U --> R[tinywasm/rbac]
     A --> I[veltylabs/iam]
     R --> I
-    I -.->|Etapa 3: HTTP+Bearer, aun sin construir| C[apps consumidoras]
+    I -->|POST /api/token, Etapa 3| C[apps consumidoras]
 ```
 
 `iam` nunca modifica `tinywasm/auth` ni `tinywasm/rbac` — las usa como

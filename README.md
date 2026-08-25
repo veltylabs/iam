@@ -18,8 +18,8 @@ flowchart TD
     U --> R[tinywasm/rbac]
     A --> I[veltylabs/iam]
     R --> I
-    I -->|HTTP + Bearer, Etapa 3| M[misitio]
-    I -->|HTTP + Bearer, Etapa 3| O[futuros proyectos Velty]
+    I -->|POST /api/token| M[misitio]
+    I -->|POST /api/token| O[futuros proyectos Velty]
 ```
 
 ## Documentación
@@ -27,11 +27,12 @@ flowchart TD
 - [Arquitectura](docs/ARCHITECTURE.md) — por qué existe, límites de
   responsabilidad frente a `site_manager`, decisiones tomadas y lo que
   queda deliberadamente abierto.
-- [Plan](docs/PLAN.md) — etapas de implementación.
 
 ## Estado
 
-Motor de identidad+RBAC portado y con `project_id` nativo (Etapas 1-2,
-ejecutadas). Etapas 3 (API Bearer, tokens de autorización por proyecto) y
-4 (cookie SSO entre `*.velty.cl`) tienen plan listo para ejecutar, sin
-código todavía — ver [`docs/PLAN.md`](docs/PLAN.md).
+Motor de identidad+RBAC portado y con `project_id` nativo (Etapas 1-2). API
+Bearer con tokens de autorización por proyecto y cookie SSO entre
+`*.velty.cl` (Etapas 3-4) — todo ejecutado. Pendiente: que `misitio` (u
+otra app) consuma `iam` remotamente en vez de montar su propio
+`authority.Module`/`rbac.Service`, y un panel de administración propio —
+ver `docs/ARCHITECTURE.md` §8.
