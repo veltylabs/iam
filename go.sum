@@ -3,6 +3,8 @@ github.com/smallstep/truststore v0.13.0 h1:90if9htAOblavbMeWlqNLnO9bsjjgVv2hQeQJ
 github.com/smallstep/truststore v0.13.0/go.mod h1:3tmMp2aLKZ/OA/jnFUB0cYPcho402UG2knuJoPh4j7A=
 github.com/tinywasm/auth v0.0.7 h1:EdUJU4qsGkv0+LIQS8q2m0+u+sNVesCA+goFLc1DYq4=
 github.com/tinywasm/auth v0.0.7/go.mod h1:uCagKZCLW1i0qIDM1B/kX0BbmikxW/QT8cYYdpyGPMA=
+github.com/tinywasm/auth v0.0.8 h1:PKx2PVG3x7LSBOvrrEy5ktj8nojGe5/dhvVspHlg368=
+github.com/tinywasm/auth v0.0.8/go.mod h1:uCagKZCLW1i0qIDM1B/kX0BbmikxW/QT8cYYdpyGPMA=
 github.com/tinywasm/await v0.1.0 h1:keCHZSRPohCGLv+Tm/ovZUwi9oZZX3G3QgUomsNgsxM=
 github.com/tinywasm/await v0.1.0/go.mod h1:7Z60wpqsTfOhy8zVE4kd86ZrFZ97e9Vx4E69Xwgeca8=
 github.com/tinywasm/base64 v0.0.5 h1:OuRGCuJrUzqo15jtotxs9PKL0mLuZmRHL6heUFaZZE4=

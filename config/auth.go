@@ -75,7 +75,14 @@ func NewProductionAuth(db *orm.DB, ids model.IDGenerator, read env.Reader) (*aut
 		ClientSecret: clientSecret,
 		RedirectURL:  redirectURL,
 	}
-	authMod.Enable(oauth2.New(authMod, authMod, authMod, []auth.OAuthProvider{g}))
+	// WithRedirectValidator: un consumidor (misitio, futuros proyectos)
+	// arranca el login con /oauth/google?redirect_uri=<su URL> para que,
+	// tras loguearse en iam, el navegador vuelva a él en vez de quedarse en
+	// iam.velty.cl. isVeltyDomain es el único guardián contra un
+	// open-redirect — nunca aceptes un dominio fuera de *.velty.cl.
+	authMod.Enable(oauth2.New(authMod, authMod, authMod, []auth.OAuthProvider{g},
+		oauth2.WithRedirectValidator(isVeltyDomain),
+	))
 
 	// Sesión SSO: cookie de identidad compartida entre *.velty.cl (ver
 	// ARCHITECTURE.md §7). Mismo secreto que IssueAuthToken (Etapa 3) usa
@@ -90,4 +97,21 @@ func NewProductionAuth(db *orm.DB, ids model.IDGenerator, read env.Reader) (*aut
 	authMod.SetStrategy(strategy)
 
 	return authMod, rbacSvc, nil
+}
+
+// isVeltyDomain reports whether url's host is velty.cl or a subdomain of
+// it — the same criterion misitio's consumer-facing dominio uses. Used ONLY
+// to validate a post-login redirect_uri; never relax this to a broader
+// pattern (no "*.example.com" for a third party) without re-reading
+// ARCHITECTURE.md §3.2's SSO scope decision.
+func isVeltyDomain(url string) bool {
+	const prefix = "https://"
+	if !fmt.HasPrefix(url, prefix) {
+		return false
+	}
+	host := url[len(prefix):]
+	if idx := fmt.Index(host, "/"); idx >= 0 {
+		host = host[:idx]
+	}
+	return host == SSOCookieDomain[1:] || fmt.HasSuffix(host, SSOCookieDomain)
 }

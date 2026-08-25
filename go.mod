@@ -3,7 +3,7 @@ module github.com/veltylabs/iam
 go 1.25.2
 
 require (
-	github.com/tinywasm/auth v0.0.7
+	github.com/tinywasm/auth v0.0.8
 	github.com/tinywasm/components v0.5.28
 	github.com/tinywasm/crypto v0.0.25
 	github.com/tinywasm/ddl v0.0.11

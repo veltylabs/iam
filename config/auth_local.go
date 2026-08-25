@@ -49,7 +49,9 @@ func NewLocalAuthWithScenarios(db *orm.DB, ids model.IDGenerator, scenarios []lo
 	}
 	mockUser := auth.OAuthUserInfo{ID: string(scenarios[0].ID), Email: scenarios[0].Email, Name: scenarios[0].Name, Avatar: scenarios[0].Avatar}
 	mockProv := &googlemock.MockProvider{User: mockUser}
-	authMod.Enable(oauth2.New(authMod, authMod, authMod, []auth.OAuthProvider{mockProv}))
+	authMod.Enable(oauth2.New(authMod, authMod, authMod, []auth.OAuthProvider{mockProv},
+		oauth2.WithRedirectValidator(isVeltyDomain),
+	))
 	loc := local.New(scenarios, authMod, authMod, local.WithAfterLogin("/"))
 	authMod.Enable(loc)
 	return authMod, rbacSvc, nil

@@ -199,6 +199,19 @@ de identidad (quién es el usuario) y el secreto del proyecto (qué app lo
 pide). Sin el secreto, cualquier código bajo `*.velty.cl` podría pedir
 tokens para un proyecto ajeno.
 
+**Server-to-server, nunca desde el navegador.** `client_secret` no puede
+vivir en un bundle WASM/JS que el usuario puede inspeccionar — eso
+anularía por completo la protección de este apartado. Quien llama a
+`POST /api/token` es siempre el **servidor** del proyecto consumidor
+(nunca `fetch()` desde el cliente): recibe la cookie SSO en su propia
+request entrante (Domain `.velty.cl` la trae automáticamente, sin código
+adicional) y la reenvía él mismo a `iam`, junto con su `client_secret`
+guardado como variable de entorno del servidor. `POST /api/token` por
+tanto **no lleva CORS** — no hay llamador cross-origin que necesite esas
+cabeceras. `veltylabs/iam/client` es el cliente HTTP que hace exactamente
+esto (`FetchAuthzToken`), para que cada consumidor no reimplemente el
+mecanismo.
+
 ## 7. Etapa 4 — SSO cross-dominio (EJECUTADA, 2026-08-24)
 
 - **Mecanismo:** cookie de dominio padre `.velty.cl`, no JWT portado por
@@ -214,14 +227,18 @@ tokens para un proyecto ajeno.
   usan `iam`/`misitio` para su cookie de sesión local hoy. No arriesga
   permisos obsoletos (no lleva roles), así que puede ser más largo que el
   token de autorización.
+- **Volver al consumidor tras el login:** el usuario entra a `iam` desde
+  `misitio` (u otro proyecto), no directamente — tras loguearse necesita
+  volver adonde estaba, no quedarse en `iam.velty.cl`. `iam` inicia el
+  login con `/oauth/google?redirect_uri=<url del consumidor>`
+  (`tinywasm/auth/oauth2` `v0.0.8`, `oauth2.WithRedirectValidator`): el
+  valor pasa por `isVeltyDomain` (mismo criterio que el resto de este
+  documento — host `velty.cl` o subdominio suyo) antes de aceptarse, vía
+  una cookie de un solo uso (`oauth_redirect`, `SameSite=Lax`, 5 minutos)
+  que sobrevive la ida y vuelta a Google. Sin esa validación, `iam` sería
+  un open-redirect utilizable para phishing.
 
 ## 8. Lo que sigue quedando fuera de este repo
-
-- **Migración de `misitio` para consumir `iam` remotamente.** No es un plan
-  de este repo — `misitio` es un repo distinto con su propio `docs/PLAN.md`.
-  Este repo solo entrega el servicio; el consumo remoto por `misitio` es un
-  plan futuro dispatchable dentro de `veltylabs/misitio`, y depende de que
-  la Etapa 3 de este repo exista primero.
 - **Panel de administración de `iam`** (`web/client.go`, `modules/`) —
   mencionado en `AGENTS.md` Restricción #1 como parte legítima de este
   repo, pero sin diseñar todavía: qué gestiona exactamente (altas de

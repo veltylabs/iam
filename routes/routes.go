@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/model"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
@@ -14,28 +13,16 @@ const PathHealth = api.PathHealth
 const PathToken = api.PathToken
 const BindingD1 = api.BindingD1
 
-// corsRootDomain/corsSubdomainSuffix scope which Origin values may call
-// /api/token with credentials — see ARCHITECTURE.md §7 (CORS with
-// credentials cannot use a wildcard origin, so this reflects the exact
-// Origin back only when it matches). Compared against the Origin header's
-// HOST, never a raw substring of the header: "https://evilvelty.cl" must
-// never match "velty.cl".
-const (
-	corsRootDomain      = "velty.cl"
-	corsSubdomainSuffix = "." + corsRootDomain
-)
-
 // Register monta todas las rutas de iam en el router.
+//
+// PathToken no lleva CORS: el llamador es siempre el SERVIDOR de un
+// proyecto consumidor (server-to-server), nunca el navegador del usuario
+// directamente — el client_secret no puede vivir en un bundle WASM/JS
+// (ver ARCHITECTURE.md §6.4/§7). Sin llamador cross-origin, no hay
+// cabeceras CORS que emitir.
 func Register(r router.Router, db *orm.DB, rbacSvc *rbac.Service, secret []byte) {
 	r.Get(PathHealth, Health(db)).Public()
-	r.Post(PathToken, TokenHandler(db, rbacSvc, secret)).Authenticated()
-}
-
-// TokenHandler es el handler que Register monta en PathToken: Token
-// envuelto en withCORS. Exportado para que un test pueda dirigir una
-// request contra él sin levantar un router real (ver tests/cors_test.go).
-func TokenHandler(db *orm.DB, rbacSvc *rbac.Service, secret []byte) router.HandlerFunc {
-	return withCORS(Token(db, rbacSvc, secret))
+	r.Post(PathToken, Token(db, rbacSvc, secret)).Authenticated()
 }
 
 // Health devuelve el manejador HTTP para la verificación de estado.
@@ -56,34 +43,6 @@ func Health(db *orm.DB) router.HandlerFunc {
 		ctx.WriteStatus(200)
 		_, _ = ctx.Write([]byte("{\"ok\":true}"))
 	}
-}
-
-// withCORS refleja Access-Control-Allow-Origin cuando el Origin de la
-// request termina en corsAllowedDomain (o lo es exactamente) — nunca "*":
-// CORS con credentials no lo admite (regla del propio estándar, ver
-// ARCHITECTURE.md §7). Un Origin fuera de ese dominio no recibe la
-// cabecera y el navegador bloquea la respuesta.
-func withCORS(next router.HandlerFunc) router.HandlerFunc {
-	return func(ctx router.Context) {
-		origin := ctx.GetHeader("Origin")
-		if origin != "" && isAllowedOrigin(origin) {
-			ctx.SetHeader("Access-Control-Allow-Origin", origin)
-			ctx.SetHeader("Access-Control-Allow-Credentials", "true")
-		}
-		next(ctx)
-	}
-}
-
-// isAllowedOrigin extracts the HOST from an Origin header value
-// ("<scheme>://<host>[:port]", never a path) and compares it against the
-// allowed domain — never a raw substring match of the whole header.
-func isAllowedOrigin(origin string) bool {
-	idx := fmt.Index(origin, "://")
-	if idx < 0 {
-		return false
-	}
-	host := origin[idx+3:]
-	return host == corsRootDomain || fmt.HasSuffix(host, corsSubdomainSuffix)
 }
 
 // TokenRequest es el cuerpo de POST /api/token. userID NUNCA viaja aquí —
