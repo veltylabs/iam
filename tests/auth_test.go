@@ -3,7 +3,6 @@ package tests
 import (
 	"testing"
 
-	"github.com/tinywasm/env/osenv"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/storage/mem"
 	"github.com/tinywasm/unixid"
@@ -22,7 +21,7 @@ func TestProductionAuthFailsWithoutGoogleEnv(t *testing.T) {
 	t.Setenv(config.EnvGoogleClientSecret, "")
 	t.Setenv(config.EnvGoogleRedirectURL, "")
 
-	if _, _, err := config.NewProductionAuth(db, ids, osenv.Reader()); err == nil {
+	if _, _, err := config.NewProductionAuth(db, ids); err == nil {
 		t.Errorf("expected error when Google OAuth env vars are missing")
 	}
 }

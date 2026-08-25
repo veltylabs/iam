@@ -3,10 +3,9 @@
 package main
 
 import (
+	"github.com/tinywasm/cloudflare/d1"
+	"github.com/tinywasm/cloudflare/edge"
 	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/goflare/cloudflare"
-	"github.com/tinywasm/goflare/d1"
-	"github.com/tinywasm/goflare/edge"
 	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/routes"
@@ -25,7 +24,7 @@ func main() {
 		return
 	}
 
-	backend, err := config.NewProductionBackend(db, ids, cloudflare.Env)
+	backend, err := config.NewProductionBackend(db, ids)
 	if err != nil {
 		fmt.Println("backend:", err)
 		return

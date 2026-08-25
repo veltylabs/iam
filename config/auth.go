@@ -30,27 +30,25 @@ const (
 )
 
 // NewProductionAuth arma el motor de identidad+RBAC para producción (Google
-// OAuth). read resuelve las variables de Google — el servidor local inyecta
-// osenv.Reader(), un futuro edge/main.go inyectará un Reader sobre el
-// binding de Cloudflare; este paquete nunca importa "os" directamente (ver
-// AGENTS.md Restricción #3). Falla rápido si falta cualquier variable:
-// arrancar con OAuth roto en silencio es peor que no arrancar. No crea
-// roles ni permisos — eso es política de cada app consumidora (ver
-// bootstrap.go para el mecanismo genérico de asignación por email).
-func NewProductionAuth(db *orm.DB, ids model.IDGenerator, read env.Reader) (*authority.Module, *rbac.Service, error) {
-	clientID := read(EnvGoogleClientID)
+// OAuth). Lee env directamente via env.Get (auto-tag !wasm=os+.env, wasm=context.env);
+// este paquete nunca importa "os" directamente (ver AGENTS.md Restricción #3).
+// Falla rápido si falta cualquier variable: arrancar con OAuth roto en silencio
+// es peor que no arrancar. No crea roles ni permisos — eso es política de cada
+// app consumidora (ver bootstrap.go para el mecanismo genérico de asignación por email).
+func NewProductionAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *rbac.Service, error) {
+	clientID := env.Get(EnvGoogleClientID)
 	if clientID == "" {
 		return nil, nil, fmt.Errf("auth: missing required environment variable %s", EnvGoogleClientID)
 	}
-	clientSecret := read(EnvGoogleClientSecret)
+	clientSecret := env.Get(EnvGoogleClientSecret)
 	if clientSecret == "" {
 		return nil, nil, fmt.Errf("auth: missing required environment variable %s", EnvGoogleClientSecret)
 	}
-	redirectURL := read(EnvGoogleRedirectURL)
+	redirectURL := env.Get(EnvGoogleRedirectURL)
 	if redirectURL == "" {
 		return nil, nil, fmt.Errf("auth: missing required environment variable %s", EnvGoogleRedirectURL)
 	}
-	jwtSecret := read(EnvJWTSecret)
+	jwtSecret := env.Get(EnvJWTSecret)
 	if jwtSecret == "" {
 		return nil, nil, fmt.Errf("auth: missing required environment variable %s", EnvJWTSecret)
 	}

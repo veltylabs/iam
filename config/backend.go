@@ -25,8 +25,8 @@ type Backend struct {
 
 // NewProductionBackend inicializa identidad, RBAC y el esquema de
 // proyectos para producción (Google OAuth + cookie SSO cross-dominio).
-func NewProductionBackend(db *orm.DB, ids model.IDGenerator, read env.Reader) (*Backend, error) {
-	authMod, rbacSvc, err := NewProductionAuth(db, ids, read)
+func NewProductionBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
+	authMod, rbacSvc, err := NewProductionAuth(db, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -36,5 +36,5 @@ func NewProductionBackend(db *orm.DB, ids model.IDGenerator, read env.Reader) (*
 	// NewProductionAuth ya validó que EnvJWTSecret existe (falla antes de
 	// llegar aquí si falta) — releerla es una lectura trivial, no lógica
 	// duplicada.
-	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, JWTSecret: []byte(read(EnvJWTSecret))}, nil
+	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, JWTSecret: []byte(env.Get(EnvJWTSecret))}, nil
 }

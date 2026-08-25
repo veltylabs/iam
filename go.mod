@@ -4,13 +4,14 @@ go 1.25.2
 
 require (
 	github.com/tinywasm/auth v0.0.8
+	github.com/tinywasm/cloudflare v0.0.2
 	github.com/tinywasm/components v0.5.28
 	github.com/tinywasm/crypto v0.0.25
 	github.com/tinywasm/ddl v0.0.11
-	github.com/tinywasm/env v0.0.7
+	github.com/tinywasm/env v0.0.8
 	github.com/tinywasm/fetch v0.1.27
 	github.com/tinywasm/fmt v0.25.7
-	github.com/tinywasm/goflare v0.5.19
+	github.com/tinywasm/goflare v0.5.20
 	github.com/tinywasm/json v0.5.23
 	github.com/tinywasm/jwt v0.1.16
 	github.com/tinywasm/layout v0.1.45
