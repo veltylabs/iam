@@ -2,6 +2,8 @@
 PLAN: "fix!: Register() mounts authMod's own routes — OAuth login has 404'd since Stage 4"
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 646881899676762679
 ---
 
 > This plan is dispatched via the CodeJob workflow. See skill: agents-workflow.
