@@ -103,7 +103,7 @@ go test ./tests/...
 > ⚠️ **`docs/PLAN_STAGE_1_PORT_IDENTITY.md` NO forma parte de este plan.** Es el
 > resto de un plan anterior ya ejecutado (commit `793f3c9`), y comparte prefijo
 > de numeración por accidente. Las etapas de este plan son **exactamente** las
-> tres de la tabla de abajo. No lo ejecutes, no lo edites y no lo borres.
+> dos de la tabla de abajo. No lo ejecutes, no lo edites y no lo borres.
 
 | Orden | Etapa | Asunto |
 |---|---|---|
