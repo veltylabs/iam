@@ -10,7 +10,7 @@ import (
 
 // Backend agrupa los módulos de dominio que comparten la misma base y
 // generador de IDs — es el único lugar donde se orquesta
-// NewProductionAuth/NewLocalAuth + initProjectSchema, así que tanto
+// NewProductionAuth/NewLocalAuth, así que tanto
 // edge/main.go (D1 real) como web/server.go (memoria) y los tests lo
 // llaman con la DB inyectada, y la lógica se prueba una vez.
 type Backend struct {
@@ -28,9 +28,6 @@ type Backend struct {
 func NewProductionBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 	authMod, rbacSvc, err := NewProductionAuth(db, ids)
 	if err != nil {
-		return nil, err
-	}
-	if err := initProjectSchema(db); err != nil {
 		return nil, err
 	}
 	// NewProductionAuth ya validó que EnvJWTSecret existe (falla antes de

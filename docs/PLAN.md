@@ -2,8 +2,9 @@
 PLAN: "fix!: migrate the schema at deploy time — main() stops paying 8.5s per cold start"
 EXECUTOR: jules
 REVIEWER: none
-STATUS: running
+STATUS: review
 SESSION: 7603010020178482094
+PR: https://github.com/veltylabs/iam/pull/2
 ---
 
 > This plan is dispatched via the CodeJob workflow. See skill: agents-workflow.

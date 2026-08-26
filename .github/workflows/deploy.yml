@@ -40,6 +40,14 @@ jobs:
       - name: Build with goflare
         run: go run github.com/tinywasm/goflare/cmd/goflare build
 
+      - name: Migrate D1 schema
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: go run ./cmd/migrate
+
       # Worker API puro, sin PublicDir/assets: Deploy() toma el camino simple
       # (script + binding D1, sin el protocolo de asset-manifest-por-hash) —
       # ver ARCHITECTURE.md para por que esto no necesita wrangler, a
