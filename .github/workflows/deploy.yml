@@ -15,51 +15,30 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # Los secretos van a nivel de job, no en el paso. Una action compuesta
+    # hereda el entorno del job de forma fiable; el `env:` del paso que la
+    # invoca no siempre llega a sus pasos internos.
+    env:
+      D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      # Un solo paso reemplaza a los seis anteriores. La action descarga el
+      # binario de goflare publicado (antes se compilaban 15 MB en el runner),
+      # instala TinyGo desde ese mismo binario —una sola fuente de la version—
+      # y corre vet, tests, build, la migracion del esquema y el deploy.
+      #
+      # Solo despliega en push a main: en un pull request compila y prueba, que
+      # es justo lo que se quiere revisar antes de mezclar.
+      - uses: tinywasm/goflare@v1
         with:
-          go-version-file: 'go.mod'
-
-      # TinyGo lo instala el mismo paquete que usa sitec durante el build, asi
-      # que la version sale de un solo lugar: DefaultVersion de
-      # github.com/tinywasm/tinygo, clavada por la version del modulo en go.mod.
-      # Ver veltylabs/misitio/.github/workflows/deploy.yml para el razonamiento
-      # completo de por que este paso vive aparte del build de sitec.
-      - name: Set up TinyGo
-        run: echo "$(go run github.com/tinywasm/tinygo/cmd/tinygoinstall -v -print-bindir)" >> "$GITHUB_PATH"
-
-      - name: Run vet
-        run: go vet ./...
-
-      - name: Run tests
-        run: go test ./tests/...
-
-      - name: Build with goflare
-        run: go run github.com/tinywasm/goflare/cmd/goflare build
-
-      - name: Migrate D1 schema
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        env:
-          D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: go run ./cmd/migrate
-
-      # Worker API puro, sin PublicDir/assets: Deploy() toma el camino simple
-      # (script + binding D1, sin el protocolo de asset-manifest-por-hash) —
-      # ver ARCHITECTURE.md para por que esto no necesita wrangler, a
-      # diferencia de un despliegue con assets estaticos.
-      - name: Deploy with goflare
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        env:
-          PROJECT_NAME: iam
-          WORKER_NAME: iam
-          DOMAIN: iam.velty.cl
-          D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
-          D1_DATABASE_NAME: DB
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: go run github.com/tinywasm/goflare/cmd/goflare deploy
+          worker: iam
+          domain: iam.velty.cl
+          d1-binding: DB
+          test: './tests/...'
+          pre-deploy: 'go run ./cmd/migrate'
+          deploy: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
