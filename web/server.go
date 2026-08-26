@@ -5,9 +5,12 @@ package main
 import (
 	"os"
 
+	"github.com/tinywasm/auth/authority"
 	"github.com/tinywasm/env"
 	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/orm"
+	"github.com/tinywasm/rbac"
+	"github.com/tinywasm/sqlt"
 	"github.com/tinywasm/server/httpd"
 	"github.com/tinywasm/storage/mem"
 	"github.com/tinywasm/unixid"
@@ -27,6 +30,12 @@ func main() {
 		fmt.Println("unixid:", err)
 		os.Exit(1)
 	}
+
+	conn := db.RawConn()
+	compiler := sqlt.NewCompiler()
+	_ = authority.Migrate(conn, compiler)
+	_ = rbac.Migrate(conn, compiler)
+	_ = config.MigrateProjects(conn, compiler)
 
 	backend, err := config.NewLocalBackend(db, ids)
 	if err != nil {

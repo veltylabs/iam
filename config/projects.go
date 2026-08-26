@@ -11,12 +11,14 @@ import (
 // ErrProjectNotFound reports that a project id has no matching row.
 var ErrProjectNotFound = fmt.Err("project", "not", "found")
 
-func initProjectSchema(db *orm.DB) error {
-	ddlCompiler, ok := db.RawConn().(ddl.Compiler)
-	if !ok {
-		return nil
-	}
-	return ddl.New(db.RawConn(), ddlCompiler).Sync(&Project{})
+// MigrateProjects reconciles the schema this service owns (Project).
+//
+// Deliberately not called from NewProductionBackend: schema reconciliation
+// is deploy-time work. Doing it per process start cost ~10 D1 round trips
+// on every isolate cold start (8.5–10.4 s measured). cmd/migrate calls this
+// once, from CI.
+func MigrateProjects(conn ddl.Execer, ddlCompiler ddl.Compiler) error {
+	return ddl.New(conn, ddlCompiler).Sync(&Project{})
 }
 
 // CreateProject registra un proyecto nuevo y devuelve el client_secret EN

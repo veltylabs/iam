@@ -30,6 +30,17 @@ sirve como la raíz de composición de rutas HTTP del servidor — es el único
 lugar donde se invocan los métodos `MountAPI` de cualquier `router.APIModule`
 (ej. `authority.Module` con `/oauth/*` y `/logout`).
 
+### 1.1 — Reconciliación del esquema en tiempo de despliegue
+
+`NewProductionBackend` asume que la base de datos ya tiene el esquema creado y
+**no realiza ninguna I/O de DDL ni reconciliación de tablas al arrancar**.
+Esto reduce el tiempo de arranque en frío (*cold start*) de los Cloudflare
+Workers de ~8.5–10.4 s a milisegundos.
+
+La reconciliación del esquema de la base de datos (tablas de `authority`,
+`rbac` y `projects`) se ejecuta de manera única en tiempo de despliegue desde
+CI usando el binario `cmd/migrate` contra la API HTTP de D1 (`NewD1Migrator`).
+
 ## 2. Qué NO es `iam`
 
 - **No es un fork de `tinywasm/auth`/`tinywasm/rbac`.** Las importa sin

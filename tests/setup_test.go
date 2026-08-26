@@ -6,10 +6,26 @@ import (
 	"github.com/tinywasm/auth/authority"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
+	"github.com/tinywasm/sqlt"
 	"github.com/tinywasm/storage/mem"
 	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
 )
+
+func migrateTestDB(t *testing.T, db *orm.DB) {
+	t.Helper()
+	conn := db.RawConn()
+	compiler := sqlt.NewCompiler()
+	if err := authority.Migrate(conn, compiler); err != nil {
+		t.Fatal(err)
+	}
+	if err := rbac.Migrate(conn, compiler); err != nil {
+		t.Fatal(err)
+	}
+	if err := config.MigrateProjects(conn, compiler); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // setup arma el motor de producción (Google mock vía variables de entorno
 // de prueba) contra una base en memoria.
@@ -21,6 +37,7 @@ func setup(t *testing.T) (*orm.DB, *authority.Module, *rbac.Service, *unixid.Uni
 	t.Setenv(config.EnvJWTSecret, "test-jwt-secret-32-bytes-long-0000")
 
 	db := orm.New(mem.New())
+	migrateTestDB(t, db)
 	ids, err := unixid.NewUnixID()
 	if err != nil {
 		t.Fatalf("unixid: %v", err)
@@ -42,6 +59,7 @@ func setupBackend(t *testing.T) *config.Backend {
 	t.Setenv(config.EnvJWTSecret, "test-jwt-secret-32-bytes-long-0000")
 
 	db := orm.New(mem.New())
+	migrateTestDB(t, db)
 	ids, err := unixid.NewUnixID()
 	if err != nil {
 		t.Fatalf("unixid: %v", err)
@@ -57,6 +75,7 @@ func setupBackend(t *testing.T) *config.Backend {
 func setupLocal(t *testing.T) (*orm.DB, *authority.Module, *rbac.Service, *unixid.UnixID) {
 	t.Helper()
 	db := orm.New(mem.New())
+	migrateTestDB(t, db)
 	ids, err := unixid.NewUnixID()
 	if err != nil {
 		t.Fatalf("unixid: %v", err)

@@ -88,8 +88,10 @@ curl https://iam.velty.cl/api/health
 
 ### 5 · De aquí en adelante: nada manual
 
-Cada push a `main` corre `go vet`, los tests y `goflare deploy`. Si los tests
-fallan **no se despliega**.
+Cada push a `main` corre `go vet`, los tests, la migración de esquema D1
+(`go run ./cmd/migrate`) y `goflare deploy`. La migración se ejecuta antes del
+despliegue del Worker para asegurar que el esquema de base de datos esté
+actualizado. Si los tests o la migración fallan **no se despliega**.
 
 ## Diagnóstico
 
