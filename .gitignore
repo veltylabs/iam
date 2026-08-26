@@ -22,3 +22,6 @@ go.work
 
 # goflare build output
 .build/
+
+# local build of the migration binary (cmd/migrate) — built by CI, never committed
+/migrate

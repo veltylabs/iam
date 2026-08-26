@@ -33,9 +33,18 @@ func main() {
 
 	conn := db.RawConn()
 	compiler := sqlt.NewCompiler()
-	_ = authority.Migrate(conn, compiler)
-	_ = rbac.Migrate(conn, compiler)
-	_ = config.MigrateProjects(conn, compiler)
+	if err := authority.Migrate(conn, compiler); err != nil {
+		fmt.Println("migrate: authority:", err)
+		os.Exit(1)
+	}
+	if err := rbac.Migrate(conn, compiler); err != nil {
+		fmt.Println("migrate: rbac:", err)
+		os.Exit(1)
+	}
+	if err := config.MigrateProjects(conn, compiler); err != nil {
+		fmt.Println("migrate: projects:", err)
+		os.Exit(1)
+	}
 
 	backend, err := config.NewLocalBackend(db, ids)
 	if err != nil {
