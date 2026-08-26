@@ -2,6 +2,8 @@
 PLAN: "fix!: migrate the schema at deploy time — main() stops paying 8.5s per cold start"
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 7603010020178482094
 ---
 
 > This plan is dispatched via the CodeJob workflow. See skill: agents-workflow.
