@@ -5,6 +5,7 @@ package api
 
 const (
 	PathHealth       = "/api/health"
+	PathHealthDB     = "/api/health/db"
 	PathToken        = "/api/token"
 	PathUsersResolve = "/api/users/resolve"
 )

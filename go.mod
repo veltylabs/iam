@@ -5,7 +5,6 @@ go 1.25.2
 require (
 	github.com/tinywasm/auth v0.0.12
 	github.com/tinywasm/cloudflare v0.0.11
-	github.com/tinywasm/components v0.5.28
 	github.com/tinywasm/crypto v0.0.25
 	github.com/tinywasm/ddl v0.0.12
 	github.com/tinywasm/env v0.0.8
@@ -14,7 +13,6 @@ require (
 	github.com/tinywasm/goflare v0.5.25
 	github.com/tinywasm/json v0.5.23
 	github.com/tinywasm/jwt v0.1.16
-	github.com/tinywasm/layout v0.1.45
 	github.com/tinywasm/model v0.1.6
 	github.com/tinywasm/orm v0.11.10
 	github.com/tinywasm/rbac v0.0.7
@@ -54,7 +52,6 @@ require (
 	github.com/tinywasm/svg v0.3.0 // indirect
 	github.com/tinywasm/tinygo v1.0.0 // indirect
 	github.com/tinywasm/view v0.1.20 // indirect
-	github.com/tinywasm/widget v0.6.12 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/net v0.57.0 // indirect

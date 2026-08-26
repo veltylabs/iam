@@ -11,9 +11,16 @@ import (
 )
 
 const PathHealth = api.PathHealth
+const PathHealthDB = api.PathHealthDB
 const PathToken = api.PathToken
 const PathUsersResolve = api.PathUsersResolve
 const BindingD1 = api.BindingD1
+
+const (
+	bodyHealthOK   = `{"ok":true}`
+	bodyHealthFail = `{"ok":false}`
+	healthProbeSQL = "SELECT 1"
+)
 
 // Register monta todas las rutas de iam en el router.
 //
@@ -39,7 +46,8 @@ func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *r
 		m.MountAPI(r)
 	}
 
-	r.Get(PathHealth, Health(db)).Public()
+	r.Get(PathHealth, Health()).Public()
+	r.Get(PathHealthDB, HealthDB(db)).Public()
 	r.Post(PathToken, Token(db, authMod, rbacSvc, secret)).Authenticated()
 	// PathUsersResolve is Public() at the router's access-gate level
 	// (no session cookie is involved — see its own doc), but it is NOT
@@ -47,23 +55,38 @@ func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *r
 	r.Post(PathUsersResolve, ResolveUser(db, authMod)).Public()
 }
 
-// Health devuelve el manejador HTTP para la verificación de estado.
-func Health(db *orm.DB) router.HandlerFunc {
+// Health responde si este Worker esta vivo y sirviendo. A proposito NO toca la
+// base: quien consulta esta ruta pregunta por el Worker, y meter una consulta a
+// D1 aqui costaba ~160 ms de viaje a la region de la base ademas de convertir
+// un hipo de red en una falsa alarma de caida. La alcanzabilidad de la base
+// tiene su propia ruta, PathHealthDB.
+func Health() router.HandlerFunc {
+	return func(ctx router.Context) {
+		ctx.SetHeader("Content-Type", "application/json")
+		ctx.WriteStatus(200)
+		_, _ = ctx.Write([]byte(bodyHealthOK))
+	}
+}
+
+// HealthDB comprueba que la base responde. Es deliberadamente una ruta aparte:
+// cuesta un viaje completo a la region donde vive D1, asi que se consulta
+// cuando se quiere esa respuesta, no en cada latido de un monitor.
+func HealthDB(db *orm.DB) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
 
 		if db == nil || db.RawConn() == nil {
 			ctx.WriteStatus(503)
-			_, _ = ctx.Write([]byte("{\"ok\":false}"))
+			_, _ = ctx.Write([]byte(bodyHealthFail))
 			return
 		}
-		if err := db.RawConn().Exec("SELECT 1"); err != nil {
+		if err := db.RawConn().Exec(healthProbeSQL); err != nil {
 			ctx.WriteStatus(503)
-			_, _ = ctx.Write([]byte("{\"ok\":false}"))
+			_, _ = ctx.Write([]byte(bodyHealthFail))
 			return
 		}
 		ctx.WriteStatus(200)
-		_, _ = ctx.Write([]byte("{\"ok\":true}"))
+		_, _ = ctx.Write([]byte(bodyHealthOK))
 	}
 }
 
