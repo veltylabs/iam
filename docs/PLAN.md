@@ -2,8 +2,9 @@
 PLAN: "perf!: el edge deja de pagar un viaje a Virginia por un health check"
 EXECUTOR: jules
 REVIEWER: none
-STATUS: running
+STATUS: review
 SESSION: 4806985898598155454
+PR: https://github.com/veltylabs/iam/pull/4
 ---
 
 > This plan is dispatched via the CodeJob workflow. See skill: agents-workflow.
