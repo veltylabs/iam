@@ -23,10 +23,10 @@ func projectSecretKey() []byte {
 	return hmac.HMACSHA256([]byte(env.Get(EnvJWTSecret)), []byte(projectSecretKeyLabel))
 }
 
-// hashProjectSecret deriva el hash almacenable de un client_secret. Es HMAC y
-// no bcrypt a proposito: un client_secret es aleatorio y de alta entropia, asi
-// que no hay nada que frenar con un factor de costo — solo CPU que quemar, y en
-// un Worker eso se paga en cada peticion contra un limite de 10 ms.
+// hashProjectSecret deriva el hash almacenable de un client_secret. Es HMAC,
+// sin factor de costo, a proposito: un client_secret es aleatorio y de alta
+// entropia, asi que no hay nada que frenar ahi — solo CPU que quemar, y en un
+// Worker eso se paga en cada peticion contra un limite de 10 ms.
 func hashProjectSecret(plainSecret string) string {
 	return base64.URLEncode(hmac.HMACSHA256(projectSecretKey(), []byte(plainSecret)))
 }
