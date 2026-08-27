@@ -354,27 +354,50 @@ correos, más piezas móviles, y un bootstrap circular. Ver
 
 ### 8.3 — Qué administra
 
-| Módulo | Operaciones | Mecanismo subyacente |
+| Área | Operaciones | Mecanismo subyacente |
 |---|---|---|
-| **Proyectos** (`modules/projects`) | listar · crear (muestra el `client_secret` en claro **una sola vez**) · regenerar secreto (el anterior deja de validar de inmediato) · desactivar | `config.CreateProject` / `config.RegenerateProjectSecret` / `config.SetProjectActive` — solo se guarda el HMAC del secreto (§6.4) |
-| **Roles** (`modules/roles`) | listar por proyecto · crear (código, nombre, descripción) · fijar `SessionTTL` · borrar | `rbac.Service.CreateRole` / `SetRoleSessionTTL` / `DeleteRole` |
-| **Usuarios** (`modules/users`) | asignar un rol a un usuario por email (lo crea si no existe) · revocar · listar los usuarios de un rol | `rbac.Service.AssignRole` / `RevokeRole` + `authority.Module.UserByEmail`/`CreateUser` (mismo patrón que `config.EnsureRole`) |
-| **Auditoría** (`modules/audit`) | listar (solo lectura) | cada operación mutadora de arriba escribe una fila `audit_log` (actor, acción, objetivo, `ts`) |
+| **Proyectos** | listar · crear (muestra el `client_secret` en claro **una sola vez**) · regenerar secreto (el anterior deja de validar de inmediato) · desactivar | `config.CreateProject` / `config.RegenerateProjectSecret` / `config.SetProjectActive` — solo se guarda el HMAC del secreto (§6.4) |
+| **Roles** | listar por proyecto · crear (código, nombre, descripción) · fijar `SessionTTL` · borrar | `rbac.Service.CreateRole` / `SetRoleSessionTTL` / `DeleteRole` |
+| **Usuarios** | asignar un rol a un usuario por email (lo crea si no existe) · revocar · listar los usuarios de un rol | `rbac.Service.AssignRole` / `RevokeRole` + `authority.Module.UserByEmail`/`CreateUser` (mismo patrón que `config.EnsureRole`) |
+| **Auditoría** | listar (solo lectura) | cada operación mutadora de arriba escribe una fila `audit_log` (actor, acción, objetivo, `ts`) |
 
-### 8.4 — Rutas
+### 8.4 — Reparto de código
 
-- `/` y `/assets/*` — panel estático (HTML + `client.wasm`).
+Sigue la arquitectura de capas del ecosistema (una sola flecha de
+dependencias; ver la de `veltylabs/misitio`):
+
+- **`config/`** — hoja: no importa nada del repo. Constantes de ruta
+  `PathAdmin*`, DTOs de cable del panel (con codecs a mano), y los helpers de
+  dominio (`GenerateClientSecret`, `RegenerateProjectSecret`,
+  `SetProjectActive`, `ListProjects`, `PanelAdminList`, `IsPanelAdmin`,
+  `RecordAudit`, `ListAudit`, `MigrateSchema`). El paquete `api/` anterior se
+  absorbe aquí y desaparece.
+- **`modules/admin/`** — archivos planos (`gate.go`, `backend.go`,
+  `handler.go`), sin subcarpetas: los handlers de `/admin/api/*` y el gate
+  `RequirePanelAdmin`. Compila al Worker; no importa `routes/` ni un renderer.
+- **`modules/panel/`** — `//go:build wasm`: el chasis (`tinywasm/layout/platformd`)
+  y las vistas (proyectos, roles, usuarios, auditoría). `routes/` **nunca** lo
+  importa — esa ausencia de import es la frontera que mantiene el panel fuera
+  de `edge.wasm`.
+- **`routes/routes.go`** — una sola tabla: los `r.Get/r.Post` de `/admin/api/*`
+  llamando a los handlers de `modules/admin/`, cada uno envuelto en
+  `admin.RequirePanelAdmin`.
+
+### 8.5 — Rutas
+
+- `/` y los assets — panel estático (HTML + `client.wasm`), servidos por
+  `edge.Serve` desde `web/public/`.
 - `/admin/api/*` — API del panel, gated por `IAM_ADMIN_EMAILS`. Server-side,
   con la cookie SSO de la propia sesión; **sin CORS** (mismo criterio que
   `routes.Register`, §6.4).
 - `/api/*`, `/oauth/*`, `/logout` — sin cambios.
 
-### 8.5 — Esquema
+### 8.6 — Esquema
 
 `audit_log` es una tabla nueva en `velty-iam-db`, propiedad de `iam` (junto a
 `project`). Se reconcilia en `cmd/migrate` como las demás (§1.1). `Project`
-gana una columna `active` (bool, default `true`) para el desactivado
-reversible.
+gana una columna `active` (1 = activo, 0 = desactivado; las filas previas a la
+migración se tratan como activas) para el desactivado reversible.
 
 ## 9. Dependencias
 
