@@ -8,6 +8,7 @@ const (
 	PathHealthDB     = "/api/health/db"
 	PathToken        = "/api/token"
 	PathUsersResolve = "/api/users/resolve"
+	PathRolesAssign  = "/api/roles/assign"
 )
 
 // BindingD1 es el nombre del binding de D1 declarado en Cloudflare para la

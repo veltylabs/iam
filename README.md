@@ -22,6 +22,24 @@ flowchart TD
     I -->|POST /api/token| O[futuros proyectos Velty]
 ```
 
+## Uso desde otro proyecto
+
+```go
+import iamclient "github.com/veltylabs/iam/client"
+
+iam, err := iamclient.New(iamclient.ConfigFromEnv(ProjectID))
+if err != nil { /* no arrancar */ }
+
+r := edge.NewRouter(edge.Config{
+    Authn:     iam.Authn(),
+    Authorize: myPolicy(iam),   // política del proyecto, no de iam
+})
+```
+
+`iam` entrega códigos de rol (`Scope`); el proyecto entrega la política.
+`Consumer.AssignRole` concede un rol en el proyecto del `Consumer` y es
+idempotente.
+
 ## Documentación
 
 - [Arquitectura](docs/ARCHITECTURE.md) — por qué existe, límites de

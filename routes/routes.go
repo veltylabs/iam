@@ -14,6 +14,7 @@ const PathHealth = api.PathHealth
 const PathHealthDB = api.PathHealthDB
 const PathToken = api.PathToken
 const PathUsersResolve = api.PathUsersResolve
+const PathRolesAssign = api.PathRolesAssign
 const BindingD1 = api.BindingD1
 
 const (
@@ -53,6 +54,7 @@ func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *r
 	// (no session cookie is involved — see its own doc), but it is NOT
 	// reachable without a valid client_secret, checked inside the handler.
 	r.Post(PathUsersResolve, ResolveUser(db, authMod)).Public()
+	r.Post(PathRolesAssign, AssignRole(db, rbacSvc)).Public()
 }
 
 // Health responde si este Worker esta vivo y sirviendo. A proposito NO toca la
@@ -214,6 +216,86 @@ func (r *ResolveUserResponse) EncodeFields(w model.FieldWriter) {
 }
 func (r *ResolveUserResponse) DecodeFields(fr model.FieldReader) {
 	r.Sub, _ = fr.String("sub")
+}
+
+// AssignRoleRequest es el cuerpo de POST /api/roles/assign. Acotado al
+// project_id del que llama: un consumidor jamás concede un rol en otro
+// proyecto.
+type AssignRoleRequest struct {
+	ProjectID    string
+	ClientSecret string
+	UserID       string
+	RoleCode     string
+}
+
+func (r *AssignRoleRequest) IsNil() bool { return r == nil }
+func (r *AssignRoleRequest) EncodeFields(w model.FieldWriter) {
+	w.String("project_id", r.ProjectID)
+	w.String("client_secret", r.ClientSecret)
+	w.String("user_id", r.UserID)
+	w.String("role_code", r.RoleCode)
+}
+func (r *AssignRoleRequest) DecodeFields(fr model.FieldReader) {
+	r.ProjectID, _ = fr.String("project_id")
+	r.ClientSecret, _ = fr.String("client_secret")
+	r.UserID, _ = fr.String("user_id")
+	r.RoleCode, _ = fr.String("role_code")
+}
+
+type AssignRoleResponse struct{}
+
+func (r *AssignRoleResponse) IsNil() bool                      { return r == nil }
+func (r *AssignRoleResponse) EncodeFields(w model.FieldWriter) {}
+func (r *AssignRoleResponse) DecodeFields(fr model.FieldReader) {}
+
+// AssignRole concede roleCode al usuario en el proyecto del llamante.
+// Idempotente: si ya lo tiene, no es un error. Si el rol no existe en ese
+// proyecto, se crea.
+func AssignRole(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
+	return func(ctx router.Context) {
+		ctx.SetHeader("Content-Type", "application/json")
+		var body AssignRoleRequest
+		if err := ctx.Decode(&body); err != nil {
+			ctx.WriteStatus(400)
+			return
+		}
+		if body.UserID == "" || body.RoleCode == "" {
+			ctx.WriteStatus(400)
+			return
+		}
+		ok, err := config.VerifyProjectSecret(db, body.ProjectID, body.ClientSecret)
+		if err != nil {
+			ctx.WriteStatus(500)
+			return
+		}
+		if !ok {
+			ctx.WriteStatus(403)
+			return
+		}
+		role, err := rbacSvc.GetRoleByCode(body.ProjectID, model.RoleCode(body.RoleCode))
+		if err != nil {
+			if err == orm.ErrNotFound {
+				if err := rbacSvc.CreateRole(body.ProjectID, body.RoleCode, model.RoleCode(body.RoleCode), body.RoleCode, ""); err != nil {
+					ctx.WriteStatus(500)
+					return
+				}
+				role, err = rbacSvc.GetRoleByCode(body.ProjectID, model.RoleCode(body.RoleCode))
+				if err != nil {
+					ctx.WriteStatus(500)
+					return
+				}
+			} else {
+				ctx.WriteStatus(500)
+				return
+			}
+		}
+		if err := rbacSvc.AssignRole(body.ProjectID, body.UserID, role.Id); err != nil {
+			ctx.WriteStatus(500)
+			return
+		}
+		ctx.WriteStatus(200)
+		_ = ctx.Encode(&AssignRoleResponse{})
+	}
 }
 
 // ResolveUser busca un usuario por email dentro de la identidad global de

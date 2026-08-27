@@ -1,7 +1,6 @@
 # Arquitectura de `iam`
 
-Define **qué** es este servicio y **por qué** existe. El detalle ejecutable
-de cómo se construye está en [`PLAN.md`](PLAN.md).
+Define **qué** es este servicio y **por qué** existe.
 
 ---
 
@@ -271,6 +270,30 @@ con el que llevará su token cuando sí inicie sesión (identidad es global
 en `iam`, no por proyecto — ver §1). Añadido para no perder esta
 funcionalidad que `misitio` ya tenía contra su `authority.Module` local
 (`AcceptAdminRequest`/`PostAdminSites`).
+
+## 7.1 — Consumidor: `client.Consumer`
+
+`client.Consumer` es la forma de consumir `iam` desde un proyecto. Un
+proyecto crea **uno** al arrancar y lo comparte entre su servidor local y su
+Worker: la misma configuración, el mismo caché de scope, el mismo
+`Authn` — antes cada punto de entrada armaba el middleware por su cuenta.
+
+```go
+iam, err := iamclient.New(iamclient.ConfigFromEnv(ProjectID))
+if err != nil { /* no arrancar */ }
+
+r := edge.NewRouter(edge.Config{
+    Authn:     iam.Authn(),
+    Authorize: myPolicy(iam),   // política del proyecto, no de iam
+})
+```
+
+Reparto que evita el próximo pedido de "que iam devuelva permisos": `iam`
+entrega **códigos de rol** (`Scope`), el consumidor entrega la política
+(`func(userID, resource, action) bool` que cruza `Scope` con su tabla
+`rol → permiso`). `Consumer` no tiene método `Authorize` — si lo tuviera,
+la política viviría en `iam`. `AssignRole` concede un rol en el proyecto del
+`Consumer` (acotado a su `project_id`) y es idempotente.
 
 ## 8. Lo que sigue quedando fuera de este repo
 - **Panel de administración de `iam`** (`web/client.go`, `modules/`) —
