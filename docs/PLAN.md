@@ -2,6 +2,8 @@
 PLAN: "feat: panel de administración de iam — proyectos, roles, usuarios y auditoría, con acceso por IAM_ADMIN_EMAILS"
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 9997108415056735386
 ---
 
 > Este plan se despacha con el flujo CodeJob. Ver skill: `agents-workflow`.
