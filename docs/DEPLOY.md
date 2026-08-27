@@ -36,15 +36,16 @@ gh secret set CLOUDFLARE_API_TOKEN  --repo veltylabs/iam
 gh secret set D1_DATABASE_ID        --repo veltylabs/iam
 ```
 
-### De ejecución — variables del Worker en Cloudflare (4)
+### De ejecución — variables del Worker en Cloudflare (5)
 
 El Worker las lee con `env.Reader` (`cloudflare.Env` en `edge/main.go`, ver
 `config/auth.go`). **Sin las tres de Google y sin `JWT_SECRET` no arranca** —
 deliberado: un servicio de identidad que arranca a medias es peor que uno que
-no arranca.
+no arranca. `IAM_ADMIN_EMAILS` no impide el arranque, pero sin ella nadie
+puede entrar al panel.
 
 Cloudflare → Workers & Pages → `iam` → *Settings* → *Variables and Secrets*,
-las cuatro como tipo **Secret** (no texto plano — un `PUT` de script que no
+las cinco como tipo **Secret** (no texto plano — un `PUT` de script que no
 declara un binding `secret_text` en su metadata lo borra si era texto plano,
 pero lo conserva si era Secret):
 
@@ -54,6 +55,7 @@ pero lo conserva si era Secret):
 | `GOOGLE_CLIENT_SECRET` | sí | el Worker no arranca |
 | `GOOGLE_REDIRECT_URL` | sí | `https://iam.velty.cl/oauth/callback/google`, registrada en Google Cloud Console |
 | `JWT_SECRET` | sí | el Worker no arranca — firma la cookie SSO y los tokens de autorización |
+| `IAM_ADMIN_EMAILS` | sí | el panel de administración no admite a nadie (lista de correos separada por coma; ver `docs/ARCHITECTURE.md` §8.2) |
 
 ## El camino, en orden
 
@@ -75,7 +77,7 @@ Cualquier push a `main` dispara la Action. `goflare deploy` crea el Worker,
 sube el script y adjunta el binding D1 y el dominio — no hace falta crear
 nada a mano en el panel de Cloudflare primero.
 
-### 3 · Cargar las cuatro variables de ejecución como Secret *(una vez)*
+### 3 · Cargar las cinco variables de ejecución como Secret *(una vez)*
 
 Ver tabla arriba.
 

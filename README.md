@@ -45,12 +45,14 @@ idempotente.
 - [Arquitectura](docs/ARCHITECTURE.md) — por qué existe, límites de
   responsabilidad frente a `site_manager`, decisiones tomadas y lo que
   queda deliberadamente abierto.
+- [Diseño](docs/DESIGN.md) — decisiones justificadas y alternativas
+  descartadas (hoy: por qué `client_secret` y no un "token").
 
 ## Estado
 
 Motor de identidad+RBAC portado y con `project_id` nativo (Etapas 1-2). API
 Bearer con tokens de autorización por proyecto y cookie SSO entre
-`*.velty.cl` (Etapas 3-4) — todo ejecutado. Pendiente: que `misitio` (u
-otra app) consuma `iam` remotamente en vez de montar su propio
-`authority.Module`/`rbac.Service`, y un panel de administración propio —
-ver `docs/ARCHITECTURE.md` §8.
+`*.velty.cl` (Etapas 3-4) — todo ejecutado. `veltylabs/misitio` ya consume
+`iam` remotamente (dejó de montar su propio `authority.Module`/`rbac.Service`)
+— primer consumidor real, confirma el contrato de `client/`. Pendiente: un
+panel de administración propio para `iam` — ver `docs/ARCHITECTURE.md` §8.

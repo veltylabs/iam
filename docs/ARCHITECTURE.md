@@ -15,7 +15,7 @@ datos de usuarios/roles.
 Evidencia concreta, verificada en código el 2026-08-24:
 
 - `veltylabs/misitio/edge/main.go` monta `authority.Module` + `rbac.Service`
-  in-process contra la D1 `veltydb` (ver
+  in-process contra la D1 `velty-misitio-db` (ver
   [`edge/main.go`](https://github.com/veltylabs/misitio/blob/main/edge/main.go)).
 - `veltylabs/mjosefa-cms` monta su propio auth contra postgres, con
   `github.com/tinywasm/user v0.0.38` — anterior al split de `auth`/`rbac`
@@ -62,6 +62,10 @@ de Velty — mismo patrón que `site_manager`/`site_content` (negocio) frente
 a `tinywasm/*` (framework).
 
 ### 3.2 — SSO real entre subdominios
+
+**SSO (Single Sign-On, "inicio de sesión único"):** el usuario se loguea
+**una vez** y esa sesión sirve automáticamente en otras aplicaciones, sin
+volver a pedir credenciales en cada una.
 
 Una sesión iniciada en un proyecto debe servir automáticamente en los
 demás: dominio compartido (`iam.velty.cl` u otro subdominio bajo
@@ -203,6 +207,9 @@ cada verificación. Se revisita si aparece un caso real que lo exija.
 
 ### 6.4 — Autenticación de la app: client credentials por proyecto
 
+> Por qué se llama `client_secret` y no "token", y cómo lo nombra la
+> industria en general: [`DESIGN.md`](DESIGN.md) §1.
+
 La cookie de identidad prueba quién es el **usuario**, no que la app que
 la reenvía es realmente `misitio` y no un sitio impostor bajo el mismo
 dominio padre. Cada proyecto registrado en `iam` recibe un `client_id` +
@@ -295,12 +302,79 @@ entrega **códigos de rol** (`Scope`), el consumidor entrega la política
 la política viviría en `iam`. `AssignRole` concede un rol en el proyecto del
 `Consumer` (acotado a su `project_id`) y es idempotente.
 
-## 8. Lo que sigue quedando fuera de este repo
-- **Panel de administración de `iam`** (`web/client.go`, `modules/`) —
-  mencionado en `AGENTS.md` Restricción #1 como parte legítima de este
-  repo, pero sin diseñar todavía: qué gestiona exactamente (altas de
-  proyecto, de client credentials, de roles) necesita su propia ronda de
-  preguntas.
+## 8. Panel de administración
+
+> STATUS (quitar esta nota cuando el panel esté implementado y publicado):
+> esta sección describe el diseño acordado; el código todavía no existe. La
+> implementación se ejecuta desde un plan (ver skill `agents-workflow`).
+
+`iam` es un **Worker con panel**, no una API pelada: alguien tiene que poder
+registrar un proyecto, emitir su `client_secret`, crear roles y asignar
+usuarios **sin tocar la D1 a mano ni correr un script**. Ese es el panel.
+
+### 8.1 — Un solo binario, mismo comportamiento en local y en producción
+
+El panel lo sirve **el mismo Worker `iam`**: los assets estáticos
+(`web/public/index.html` + `client.wasm`) van junto al script, igual que en
+`veltylabs/misitio`. En local lo sirve `web/server.go` desde
+`web/public/`. No hay un "modo panel" ni un binario aparte.
+
+La verificación de `client_secret` en `POST /api/token` (§6.4) es **idéntica
+en local y en producción** y siempre está activa — no existe un bypass de
+desarrollo. La corrección funcional del panel (que un secreto rotado deje de
+validar, que el aislamiento por `project_id` se respete, que un no-admin
+reciba 403) se prueba en `tests/`. El panel se levanta en local **solo para
+juzgar la experiencia de uso y el aspecto visual**, que es lo único que no se
+puede automatizar.
+
+`iam` **no conoce a sus consumidores por nombre**: un consumidor conoce a
+`iam`, no al revés. No hay semilla de proyectos de desarrollo dentro de
+`iam`. Un test —o una sesión manual— que necesite un proyecto lo crea a
+través del propio panel/API contra `storage/mem`.
+
+### 8.2 — Quién entra al panel: `IAM_ADMIN_EMAILS`
+
+RBAC es *lo que el panel administra*, así que no puede exigir un rol RBAC
+para entrar por primera vez (sería circular). El gate es una variable de
+entorno:
+
+| Variable | Obligatoria | Qué es |
+|---|---|---|
+| `IAM_ADMIN_EMAILS` | sí (prod) | Lista de correos separados por coma. Una petición llega a cualquier ruta `/admin/api/*` solo si el correo de la sesión SSO activa está en la lista. |
+
+En local (`web/server.go`) la lista **por defecto** es el correo del primer
+escenario de `config.LocalScenarios` (`admin@iam.local`), así que la
+identidad mock de desarrollo entra sin configurar nada; se puede sobrescribir
+con `env.Arg("iam_admin_emails")`.
+
+Se evaluó dar de alta un proyecto `iam` que se administrara a sí mismo con
+RBAC (dogfooding). Descartado: mismo requisito de sembrar la lista de
+correos, más piezas móviles, y un bootstrap circular. Ver
+[`DESIGN.md`](DESIGN.md) §2.
+
+### 8.3 — Qué administra
+
+| Módulo | Operaciones | Mecanismo subyacente |
+|---|---|---|
+| **Proyectos** (`modules/projects`) | listar · crear (muestra el `client_secret` en claro **una sola vez**) · regenerar secreto (el anterior deja de validar de inmediato) · desactivar | `config.CreateProject` / `config.RegenerateProjectSecret` / `config.SetProjectActive` — solo se guarda el HMAC del secreto (§6.4) |
+| **Roles** (`modules/roles`) | listar por proyecto · crear (código, nombre, descripción) · fijar `SessionTTL` · borrar | `rbac.Service.CreateRole` / `SetRoleSessionTTL` / `DeleteRole` |
+| **Usuarios** (`modules/users`) | asignar un rol a un usuario por email (lo crea si no existe) · revocar · listar los usuarios de un rol | `rbac.Service.AssignRole` / `RevokeRole` + `authority.Module.UserByEmail`/`CreateUser` (mismo patrón que `config.EnsureRole`) |
+| **Auditoría** (`modules/audit`) | listar (solo lectura) | cada operación mutadora de arriba escribe una fila `audit_log` (actor, acción, objetivo, `ts`) |
+
+### 8.4 — Rutas
+
+- `/` y `/assets/*` — panel estático (HTML + `client.wasm`).
+- `/admin/api/*` — API del panel, gated por `IAM_ADMIN_EMAILS`. Server-side,
+  con la cookie SSO de la propia sesión; **sin CORS** (mismo criterio que
+  `routes.Register`, §6.4).
+- `/api/*`, `/oauth/*`, `/logout` — sin cambios.
+
+### 8.5 — Esquema
+
+`audit_log` es una tabla nueva en `velty-iam-db`, propiedad de `iam` (junto a
+`project`). Se reconcilia en `cmd/migrate` como las demás (§1.1). `Project`
+gana una columna `active` (bool, default `true`) para el desactivado
+reversible.
 
 ## 9. Dependencias
 
