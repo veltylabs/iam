@@ -20,5 +20,5 @@ func NewLocalBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, JWTSecret: LocalJWTSecret}, nil
+	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, IDs: ids, JWTSecret: LocalJWTSecret}, nil
 }

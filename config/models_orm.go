@@ -12,13 +12,16 @@ type Project struct {
 	Name             string
 	ClientSecretHash string
 	CreatedAt        int64
+	Active           int64
 }
 
 func (m *Project) ModelName() string { return "project" }
 
 func (m *Project) Schema() []model.Field { return ProjectModel.Fields }
 
-func (m *Project) Pointers() []any { return []any{&m.Id, &m.Name, &m.ClientSecretHash, &m.CreatedAt} }
+func (m *Project) Pointers() []any {
+	return []any{&m.Id, &m.Name, &m.ClientSecretHash, &m.CreatedAt, &m.Active}
+}
 
 func (m *Project) IsNil() bool { return m == nil }
 
@@ -27,6 +30,7 @@ func (m *Project) EncodeFields(w model.FieldWriter) {
 	w.String("name", m.Name)
 	w.String("client_secret_hash", m.ClientSecretHash)
 	w.Int("created_at", m.CreatedAt)
+	w.Int("active", m.Active)
 }
 
 func (m *Project) DecodeFields(r model.FieldReader) {
@@ -41,6 +45,9 @@ func (m *Project) DecodeFields(r model.FieldReader) {
 	}
 	if v, ok := r.Int("created_at"); ok {
 		m.CreatedAt = v
+	}
+	if v, ok := r.Int("active"); ok {
+		m.Active = v
 	}
 }
 
@@ -64,11 +71,13 @@ var Project_ = struct {
 	Name             string
 	ClientSecretHash string
 	CreatedAt        string
+	Active           string
 }{
 	Id:               "id",
 	Name:             "name",
 	ClientSecretHash: "client_secret_hash",
 	CreatedAt:        "created_at",
+	Active:           "active",
 }
 
 func ReadOneProject(qb *orm.QB, model *Project) (*Project, error) {
@@ -84,6 +93,103 @@ func ReadAllProject(qb *orm.QB) (ProjectList, error) {
 	err := qb.ReadAll(
 		func() model.Model { return &Project{} },
 		func(m model.Model) { results = append(results, m.(*Project)) },
+	)
+	return results, err
+}
+
+type AuditEntry struct {
+	Id        string
+	ActorEmail string
+	Action    string
+	Target    string
+	Detail    string
+	CreatedAt int64
+}
+
+func (m *AuditEntry) ModelName() string { return "audit_entry" }
+
+func (m *AuditEntry) Schema() []model.Field { return AuditEntryModel.Fields }
+
+func (m *AuditEntry) Pointers() []any {
+	return []any{&m.Id, &m.ActorEmail, &m.Action, &m.Target, &m.Detail, &m.CreatedAt}
+}
+
+func (m *AuditEntry) IsNil() bool { return m == nil }
+
+func (m *AuditEntry) EncodeFields(w model.FieldWriter) {
+	w.String("id", m.Id)
+	w.String("actor_email", m.ActorEmail)
+	w.String("action", m.Action)
+	w.String("target", m.Target)
+	w.String("detail", m.Detail)
+	w.Int("created_at", m.CreatedAt)
+}
+
+func (m *AuditEntry) DecodeFields(r model.FieldReader) {
+	if v, ok := r.String("id"); ok {
+		m.Id = v
+	}
+	if v, ok := r.String("actor_email"); ok {
+		m.ActorEmail = v
+	}
+	if v, ok := r.String("action"); ok {
+		m.Action = v
+	}
+	if v, ok := r.String("target"); ok {
+		m.Target = v
+	}
+	if v, ok := r.String("detail"); ok {
+		m.Detail = v
+	}
+	if v, ok := r.Int("created_at"); ok {
+		m.CreatedAt = v
+	}
+}
+
+type AuditEntryList []*AuditEntry
+
+func (s *AuditEntryList) Schema() []model.Field            { return nil }
+func (s *AuditEntryList) Pointers() []any                  { return nil }
+func (s *AuditEntryList) Len() int                         { return len(*s) }
+func (s *AuditEntryList) At(i int) model.Fielder           { return (*s)[i] }
+func (s *AuditEntryList) Append() model.Fielder            { v := &AuditEntry{}; *s = append(*s, v); return v }
+func (s *AuditEntryList) IsNil() bool                      { return s == nil }
+func (s *AuditEntryList) EncodeFields(_ model.FieldWriter) {}
+func (s *AuditEntryList) DecodeFields(_ model.FieldReader) {}
+
+func (m *AuditEntry) Validate(action byte) error {
+	return model.ValidateFields(action, m)
+}
+
+var AuditEntry_ = struct {
+	Id         string
+	ActorEmail string
+	Action     string
+	Target     string
+	Detail     string
+	CreatedAt  string
+}{
+	Id:         "id",
+	ActorEmail: "actor_email",
+	Action:     "action",
+	Target:     "target",
+	Detail:     "detail",
+	CreatedAt:  "created_at",
+}
+
+func ReadOneAuditEntry(qb *orm.QB, model *AuditEntry) (*AuditEntry, error) {
+	err := qb.ReadOne()
+	if err != nil {
+		return nil, err
+	}
+	return model, nil
+}
+
+func ReadAllAuditEntry(qb *orm.QB) (AuditEntryList, error) {
+	var results AuditEntryList
+	err := qb.ReadAll(
+		func() model.Model { return &AuditEntry{} },
+		func(m model.Model) { results = append(results, m.(*AuditEntry)) },
 	)
 	return results, err
 }

@@ -33,6 +33,6 @@ func main() {
 	r := edge.NewRouter(edge.Config{
 		Authn: backend.Auth.Authenticate(),
 	})
-	routes.Register(r, db, backend.Auth, backend.RBAC, backend.JWTSecret)
+	routes.Register(r, db, backend.Auth, backend.RBAC, backend.JWTSecret, config.PanelAdminList(), ids)
 	edge.Serve(r)
 }

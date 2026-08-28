@@ -17,6 +17,7 @@ type Backend struct {
 	Auth *authority.Module
 	RBAC *rbac.Service
 	DB   *orm.DB
+	IDs  model.IDGenerator
 	// JWTSecret firma tanto la cookie de identidad (Etapa 4) como el token
 	// de autorización project-scoped (Etapa 3, ver routes.Token) — un solo
 	// secreto HS256 para todo iam.
@@ -33,5 +34,5 @@ func NewProductionBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 	// NewProductionAuth ya validó que EnvJWTSecret existe (falla antes de
 	// llegar aquí si falta) — releerla es una lectura trivial, no lógica
 	// duplicada.
-	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, JWTSecret: []byte(env.Get(EnvJWTSecret))}, nil
+	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, IDs: ids, JWTSecret: []byte(env.Get(EnvJWTSecret))}, nil
 }
