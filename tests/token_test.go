@@ -59,7 +59,7 @@ func TestToken_WrongClientSecret403(t *testing.T) {
 		t.Fatalf("CreateProject: %v", err)
 	}
 
-	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret)
+	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
 	ctx := &mock.Context{}
 	ctx.SetUserID("user-1")
 	body, err := encodeTokenRequest(t, "proj-1", "wrong-secret")
@@ -86,7 +86,7 @@ func TestToken_UserIDFromSessionNeverFromBody(t *testing.T) {
 		t.Fatalf("CreateUser: %v", err)
 	}
 
-	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret)
+	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
 	ctx := &mock.Context{}
 	ctx.SetUserID(u.Id)
 	// TokenRequest has no user id field at all — there is no way to smuggle

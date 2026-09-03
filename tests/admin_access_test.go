@@ -13,7 +13,7 @@ import (
 
 func TestPanelGate_NoSession401(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
-	h := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
+	h := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
 
 	ctx := &mock.Context{InMethod: "GET", InPath: config.PathAdminProjects}
 	h(ctx)
@@ -29,7 +29,7 @@ func TestPanelGate_NonAdmin403(t *testing.T) {
 		t.Fatalf("CreateUser: %v", err)
 	}
 
-	h := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
+	h := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
 	ctx := &mock.Context{InMethod: "GET", InPath: config.PathAdminProjects}
 	ctx.SetUserID(u.Id)
 	h(ctx)
@@ -45,7 +45,7 @@ func TestPanelGate_Admin200(t *testing.T) {
 		t.Fatalf("CreateUser: %v", err)
 	}
 
-	h := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
+	h := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
 	ctx := &mock.Context{InMethod: "GET", InPath: config.PathAdminProjects}
 	ctx.SetUserID(u.Id)
 	h(ctx)

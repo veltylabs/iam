@@ -17,6 +17,10 @@ const (
 	AuditRoleSetTTL        = "role.set_ttl"
 	AuditUserAssign        = "user.assign_role"
 	AuditUserRevoke        = "user.revoke_role"
+
+	AuditPanelDenied  = "panel.access_denied"  // sesión válida, email fuera de IAM_ADMIN_EMAILS
+	AuditOriginDenied = "panel.origin_denied"  // mutación desde un origen ajeno
+	AuditTokenDenied  = "token.secret_invalid" // client_secret inválido en /api/token
 )
 
 // RecordAudit escribe una fila de auditoría. Si falla, loguea con fmt.Println y sigue.

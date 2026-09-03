@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/tinywasm/auth/authority"
+	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/model"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
@@ -42,8 +43,9 @@ const (
 // (ver ARCHITECTURE.md §6.4/§7). Sin llamador cross-origin, no hay
 // cabeceras CORS que emitir.
 // El panel también es server-side (la cookie SSO viaja sola), así que
-// /admin/api/* tampoco lleva CORS.
-func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte, adminEmails []string, ids model.IDGenerator) {
+// /api/admin/* tampoco lleva CORS.
+func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte, adminEmails []string, ids model.IDGenerator, panelOrigin string) {
+	r.Use(SecurityHeaders())
 	modules := []router.APIModule{authMod}
 	for _, m := range modules {
 		m.MountAPI(r)
@@ -51,26 +53,40 @@ func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *r
 
 	r.Get(PathHealth, Health()).Public()
 	r.Get(PathHealthDB, HealthDB(db)).Public()
-	r.Post(PathToken, Token(db, authMod, rbacSvc, secret)).Authenticated()
+	r.Post(PathToken, Token(db, authMod, rbacSvc, secret, ids)).Authenticated()
 	// PathUsersResolve is Public() at the router's access-gate level
 	// (no session cookie is involved — see its own doc), but it is NOT
 	// reachable without a valid client_secret, checked inside the handler.
 	r.Post(PathUsersResolve, ResolveUser(db, authMod)).Public()
 	r.Post(PathRolesAssign, AssignRole(db, rbacSvc)).Public()
 
-	r.Get(config.PathAdminMe, admin.RequirePanelAdmin(authMod, adminEmails, admin.Me(authMod))).Public()
-	r.Get(config.PathAdminProjects, admin.RequirePanelAdmin(authMod, adminEmails, admin.ListProjectsHandler(db))).Public()
-	r.Post(config.PathAdminProjects, admin.RequirePanelAdmin(authMod, adminEmails, admin.CreateProjectHandler(db, ids))).Public()
-	r.Post(config.PathAdminProjectRotate, admin.RequirePanelAdmin(authMod, adminEmails, admin.RotateSecretHandler(db, ids))).Public()
-	r.Post(config.PathAdminProjectActive, admin.RequirePanelAdmin(authMod, adminEmails, admin.SetActiveHandler(db, ids))).Public()
-	r.Get(config.PathAdminRoles, admin.RequirePanelAdmin(authMod, adminEmails, admin.ListRolesHandler(db))).Public()
-	r.Post(config.PathAdminRoles, admin.RequirePanelAdmin(authMod, adminEmails, admin.CreateRoleHandler(db, rbacSvc, ids))).Public()
-	r.Post(config.PathAdminRoleTTL, admin.RequirePanelAdmin(authMod, adminEmails, admin.SetRoleTTLHandler(db, rbacSvc, ids))).Public()
-	r.Post(config.PathAdminRoleDelete, admin.RequirePanelAdmin(authMod, adminEmails, admin.DeleteRoleHandler(db, rbacSvc, ids))).Public()
-	r.Get(config.PathAdminRoleUsers, admin.RequirePanelAdmin(authMod, adminEmails, admin.ListRoleUsersHandler(db, authMod, rbacSvc))).Public()
-	r.Post(config.PathAdminUserAssign, admin.RequirePanelAdmin(authMod, adminEmails, admin.AssignUserHandler(db, authMod, rbacSvc, ids))).Public()
-	r.Post(config.PathAdminUserRevoke, admin.RequirePanelAdmin(authMod, adminEmails, admin.RevokeUserHandler(db, authMod, rbacSvc, ids))).Public()
-	r.Get(config.PathAdminAudit, admin.RequirePanelAdmin(authMod, adminEmails, admin.ListAuditHandler(db))).Public()
+	r.Get(config.PathAdminMe, admin.RequirePanelAdmin(db, ids, authMod, adminEmails, admin.Me(authMod))).Public()
+	r.Get(config.PathAdminProjects, admin.RequirePanelAdmin(db, ids, authMod, adminEmails, admin.ListProjectsHandler(db))).Public()
+	adminPost(r, config.PathAdminProjects, db, authMod, adminEmails, ids, panelOrigin, admin.CreateProjectHandler(db, ids))
+	adminPost(r, config.PathAdminProjectRotate, db, authMod, adminEmails, ids, panelOrigin, admin.RotateSecretHandler(db, ids))
+	adminPost(r, config.PathAdminProjectActive, db, authMod, adminEmails, ids, panelOrigin, admin.SetActiveHandler(db, ids))
+	r.Get(config.PathAdminRoles, admin.RequirePanelAdmin(db, ids, authMod, adminEmails, admin.ListRolesHandler(db, rbacSvc))).Public()
+	adminPost(r, config.PathAdminRoles, db, authMod, adminEmails, ids, panelOrigin, admin.CreateRoleHandler(db, rbacSvc, ids))
+	adminPost(r, config.PathAdminRoleTTL, db, authMod, adminEmails, ids, panelOrigin, admin.SetRoleTTLHandler(db, rbacSvc, ids))
+	adminPost(r, config.PathAdminRoleDelete, db, authMod, adminEmails, ids, panelOrigin, admin.DeleteRoleHandler(db, rbacSvc, ids))
+	r.Get(config.PathAdminRoleUsers, admin.RequirePanelAdmin(db, ids, authMod, adminEmails, admin.ListRoleUsersHandler(db, authMod, rbacSvc))).Public()
+	adminPost(r, config.PathAdminUserAssign, db, authMod, adminEmails, ids, panelOrigin, admin.AssignUserHandler(db, authMod, rbacSvc, ids))
+	adminPost(r, config.PathAdminUserRevoke, db, authMod, adminEmails, ids, panelOrigin, admin.RevokeUserHandler(db, authMod, rbacSvc, ids))
+	r.Get(config.PathAdminAudit, admin.RequirePanelAdmin(db, ids, authMod, adminEmails, admin.ListAuditHandler(db))).Public()
+}
+
+// adminPost registra una ruta de mutación del panel con las dos guardas que
+// TODA mutación necesita, en el orden correcto. Es el único camino para
+// montar un POST de /api/admin: agregar uno sin pasar por acá es agregarlo
+// sin protección CSRF.
+//
+// El orden de anidado importa: RequirePanelAdmin afuera (la identidad se
+// decide primero) y RequireSameOrigin adentro, así el rechazo por origen
+// queda registrado con el email del administrador ya resuelto.
+func adminPost(r router.Router, path string, db *orm.DB, authMod *authority.Module, adminEmails []string, ids model.IDGenerator, origin string, h func(router.Context, string)) {
+	r.Post(path,
+		admin.RequirePanelAdmin(db, ids, authMod, adminEmails,
+			admin.RequireSameOrigin(db, ids, origin, h))).Public()
 }
 
 // Health responde si este Worker esta vivo y sirviendo. A proposito NO toca la
@@ -156,8 +172,9 @@ func (t *TokenResponse) DecodeFields(r model.FieldReader) {
 
 // Token emite un token de autorización project-scoped para el usuario de
 // la sesión activa, si project_id/client_secret validan contra el
-// proyecto registrado.
-func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte) router.HandlerFunc {
+// proyecto registrado. Un secreto inválido se audita (token.secret_invalid)
+// sin guardar nunca el secreto recibido.
+func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte, ids model.IDGenerator) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
 		userID := ctx.UserID()
@@ -176,6 +193,9 @@ func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret 
 			return
 		}
 		if !ok {
+			if err := config.RecordAudit(db, ids, "", config.AuditTokenDenied, body.ProjectID, ""); err != nil {
+				fmt.Println("audit:", err)
+			}
 			ctx.WriteStatus(403)
 			return
 		}
@@ -266,7 +286,8 @@ func (r *AssignRoleResponse) DecodeFields(fr model.FieldReader) {}
 
 // AssignRole concede roleCode al usuario en el proyecto del llamante.
 // Idempotente: si ya lo tiene, no es un error. Si el rol no existe en ese
-// proyecto, se crea.
+// proyecto, devuelve 404: un proyecto consumidor no define roles, los usa.
+// Definirlos es del panel.
 func AssignRole(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
@@ -288,24 +309,11 @@ func AssignRole(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
 			ctx.WriteStatus(403)
 			return
 		}
-		role, err := rbacSvc.GetRoleByCode(body.ProjectID, model.RoleCode(body.RoleCode))
-		if err != nil {
-			if err == orm.ErrNotFound {
-				if err := rbacSvc.CreateRole(body.ProjectID, body.RoleCode, model.RoleCode(body.RoleCode), body.RoleCode, ""); err != nil {
-					ctx.WriteStatus(500)
-					return
-				}
-				role, err = rbacSvc.GetRoleByCode(body.ProjectID, model.RoleCode(body.RoleCode))
-				if err != nil {
-					ctx.WriteStatus(500)
-					return
-				}
-			} else {
-				ctx.WriteStatus(500)
+		if err := rbacSvc.AssignRoleByCode(body.ProjectID, body.UserID, model.RoleCode(body.RoleCode)); err != nil {
+			if err == rbac.ErrRoleNotFound {
+				ctx.WriteStatus(404)
 				return
 			}
-		}
-		if err := rbacSvc.AssignRole(body.ProjectID, body.UserID, role.Id); err != nil {
 			ctx.WriteStatus(500)
 			return
 		}

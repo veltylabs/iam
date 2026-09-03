@@ -259,12 +259,27 @@ antes de esta etapa.
   `misitio` (u otro proyecto), no directamente — tras loguearse necesita
   volver adonde estaba, no quedarse en `iam.velty.cl`. `iam` inicia el
   login con `/oauth/google?redirect_uri=<url del consumidor>`
-  (`tinywasm/auth/oauth2` `v0.0.8`, `oauth2.WithRedirectValidator`): el
+  (`tinywasm/auth/oauth2`, `oauth2.WithRedirectValidator`): el
   valor pasa por `isVeltyDomain` (mismo criterio que el resto de este
   documento — host `velty.cl` o subdominio suyo) antes de aceptarse, vía
   una cookie de un solo uso (`oauth_redirect`, `SameSite=Lax`, 5 minutos)
   que sobrevive la ida y vuelta a Google. Sin esa validación, `iam` sería
   un open-redirect utilizable para phishing.
+- **Redirección post-login — qué termina un host:** `isVeltyDomain`
+  (`config/auth.go`) extrae el host igual que lo haría un navegador, y la
+  lista de terminadores es exhaustiva a propósito: `/` (path), `?`
+  (query), `#` (fragmento) y `\` (el navegador la normaliza a `/` antes de
+  parsear). Cortar solo en `/` dejaba pasar `https://evil.com#.velty.cl`
+  (el sufijo quedaba dentro del "host" para la función y fuera de él para
+  el navegador). Además se rechaza cualquier URL con bytes de control, se
+  exige el prefijo `https://` en minúscula exacta, se descarta el userinfo
+  (`https://x.velty.cl@evil.com` apunta a `evil.com`: todo lo anterior al
+  último `@` es del atacante) y el host se compara en minúsculas. Se
+  rechazan `https://evil.com#.velty.cl`, `https://evil.com\.velty.cl`,
+  `https://evil.com?x.velty.cl` y `https://x.velty.cl@evil.com`; se aceptan
+  `https://velty.cl`, `https://misitio.velty.cl/panel` y
+  `https://a.b.velty.cl`. El criterio nunca se relaja sin releer la
+  decisión de alcance SSO (§3.2).
 
 ### 6.5 — Resolver/crear usuario por email, sin sesión
 
@@ -300,7 +315,9 @@ entrega **códigos de rol** (`Scope`), el consumidor entrega la política
 (`func(userID, resource, action) bool` que cruza `Scope` con su tabla
 `rol → permiso`). `Consumer` no tiene método `Authorize` — si lo tuviera,
 la política viviría en `iam`. `AssignRole` concede un rol en el proyecto del
-`Consumer` (acotado a su `project_id`) y es idempotente.
+`Consumer` (acotado a su `project_id`) y es idempotente. Si el `roleCode` no
+existe en ese proyecto devuelve 404: un consumidor no define roles, los usa
+— definirlos es del panel (`POST /api/roles/assign` nunca crea roles).
 
 ## 8. Panel de administración
 
@@ -336,7 +353,7 @@ entorno:
 
 | Variable | Obligatoria | Qué es |
 |---|---|---|
-| `IAM_ADMIN_EMAILS` | sí (prod) | Lista de correos separados por coma. Una petición llega a cualquier ruta `/admin/api/*` solo si el correo de la sesión SSO activa está en la lista. |
+| `IAM_ADMIN_EMAILS` | sí (prod) | Lista de correos separados por coma. Una petición llega a cualquier ruta `/api/admin/*` solo si el correo de la sesión SSO activa está en la lista. |
 
 En local (`web/server.go`) la lista **por defecto** es el correo del primer
 escenario de `config.LocalScenarios` (`admin@iam.local`), así que la
@@ -353,8 +370,8 @@ correos, más piezas móviles, y un bootstrap circular. Ver
 | Área | Operaciones | Mecanismo subyacente |
 |---|---|---|
 | **Proyectos** | listar · crear (muestra el `client_secret` en claro **una sola vez**) · regenerar secreto (el anterior deja de validar de inmediato) · desactivar | `config.CreateProject` / `config.RegenerateProjectSecret` / `config.SetProjectActive` — solo se guarda el HMAC del secreto (§6.4) |
-| **Roles** | listar por proyecto · crear (código, nombre, descripción) · fijar `SessionTTL` · borrar | `rbac.Service.CreateRole` / `SetRoleSessionTTL` / `DeleteRole` |
-| **Usuarios** | asignar un rol a un usuario por email (lo crea si no existe) · revocar · listar los usuarios de un rol | `rbac.Service.AssignRole` / `RevokeRole` + `authority.Module.UserByEmail`/`CreateUser` (mismo patrón que `config.EnsureRole`) |
+| **Roles** | listar por proyecto · crear (código, nombre, descripción; código duplicado → 409) · fijar `SessionTTL` · borrar | `rbac.Service.CreateRole` / `SetRoleSessionTTL` / `DeleteRoleByCode` |
+| **Usuarios** | asignar un rol a un usuario por email (lo crea si no existe; código inexistente → 404) · revocar · listar los usuarios de un rol | `rbac.Service.AssignRoleByCode` / `RevokeRoleByCode` / `UsersInRole` + `authority.Module.UserByEmail`/`CreateUser` (mismo patrón que `config.EnsureRole`) |
 | **Auditoría** | listar (solo lectura) | cada operación mutadora de arriba escribe una fila `audit_log` (actor, acción, objetivo, `ts`) |
 
 ### 8.4 — Reparto de código
@@ -368,24 +385,31 @@ dependencias; ver la de `veltylabs/misitio`):
   `SetProjectActive`, `ListProjects`, `PanelAdminList`, `IsPanelAdmin`,
   `RecordAudit`, `ListAudit`, `MigrateSchema`). El paquete `api/` anterior se
   absorbe aquí y desaparece.
-- **`modules/admin/`** — archivos planos (`gate.go`, `backend.go`,
-  `handler.go`), sin subcarpetas: los handlers de `/admin/api/*` y el gate
-  `RequirePanelAdmin`. Compila al Worker; no importa `routes/` ni un renderer.
+- **`modules/admin/`** — archivos planos (`handler.go`, `backend.go`,
+  `origin.go`), sin subcarpetas: los handlers de `/api/admin/*`, el gate
+  `RequirePanelAdmin` y la guarda de origen `RequireSameOrigin`. Compila
+  al Worker; no importa `routes/` ni un renderer.
 - **`modules/panel/`** — `//go:build wasm`: el chasis (`tinywasm/layout/platformd`)
   y las vistas (proyectos, roles, usuarios, auditoría). `routes/` **nunca** lo
   importa — esa ausencia de import es la frontera que mantiene el panel fuera
   de `edge.wasm`.
-- **`routes/routes.go`** — una sola tabla: los `r.Get/r.Post` de `/admin/api/*`
-  llamando a los handlers de `modules/admin/`, cada uno envuelto en
-  `admin.RequirePanelAdmin`.
+- **`routes/routes.go`** — una sola tabla: los `r.Get/r.Post` de `/api/admin/*`
+  llamando a los handlers de `modules/admin/`, los GET envueltos en
+  `admin.RequirePanelAdmin` y cada POST de mutación registrado vía el helper
+  local `adminPost` (las dos guardas en el orden correcto:
+  `RequirePanelAdmin` afuera, `RequireSameOrigin` adentro). El middleware
+  `SecurityHeaders` se instala primero con `r.Use()`.
 
 ### 8.5 — Rutas
 
 - `/` y los assets — panel estático (HTML + `client.wasm`), servidos por
   `edge.Serve` desde `web/public/`.
-- `/admin/api/*` — API del panel, gated por `IAM_ADMIN_EMAILS`. Server-side,
-  con la cookie SSO de la propia sesión; **sin CORS** (mismo criterio que
-  `routes.Register`, §6.4).
+- `/api/admin/*` — API del panel, gated por `IAM_ADMIN_EMAILS` y por origen
+  (§8.7). Server-side, con la cookie SSO de la propia sesión; **sin CORS**
+  (mismo criterio que `routes.Register`, §6.4). El prefijo es `/api/admin/`
+  —no `/admin/api/`— para caer bajo la convención worker-first del
+  ecosistema (`tinywasm/goflare` sirve `/api/*` desde el Worker sin depender
+  de la precedencia con los assets estáticos).
 - `/api/*`, `/oauth/*`, `/logout` — sin cambios.
 
 ### 8.6 — Esquema
@@ -394,6 +418,58 @@ dependencias; ver la de `veltylabs/misitio`):
 `project`). Se reconcilia en `cmd/migrate` como las demás (§1.1). `Project`
 gana una columna `active` (1 = activo, 0 = desactivado; las filas previas a la
 migración se tratan como activas) para el desactivado reversible.
+
+La auditoría registra las mutaciones exitosas Y las denegaciones: un registro
+que solo tiene éxitos no sirve para investigar nada. Acciones de denegación:
+`panel.access_denied` (sesión válida, email fuera de `IAM_ADMIN_EMAILS`),
+`panel.origin_denied` (mutación desde un origen ajeno — guarda el `Origin`
+recibido truncado a 200 bytes, nunca sin techo) y `token.secret_invalid`
+(`client_secret` inválido en `/api/token`, con el `project_id` como objetivo
+y actor vacío). El `client_secret` recibido nunca se escribe en la auditoría.
+
+### 8.7 — CSRF y la cookie compartida
+
+La cookie SSO se emite con `Domain=.velty.cl` y `SameSite=Strict`. `SameSite`
+razona por **sitio**, no por origen: `misitio.velty.cl` es same-site respecto
+de `iam.velty.cl`, así que cualquier página servida desde cualquier
+subdominio de `velty.cl` —un consumidor comprometido, un XSS en otra app, un
+subdominio abandonado— podría disparar `POST /api/admin/projects/rotate` con
+la cookie del administrador adjunta. La ausencia de CORS no protege: CORS
+gobierna la lectura de la respuesta, no el envío de la petición.
+
+Por eso todas las rutas de mutación de `/api/admin/*` exigen además venir del
+propio origen de `iam` (`modules/admin/origin.go`, `RequireSameOrigin`): se
+acepta si `Sec-Fetch-Site` es `same-origin` (lo mandan todos los navegadores
+vigentes y no es falsificable desde JavaScript) o si `Origin` coincide
+exactamente con `IAM_PANEL_ORIGIN`. Una petición sin ninguna de las dos
+cabeceras se rechaza —el panel siempre las manda— y los GET (que no mutan) no
+llevan la guarda. La guarda exigida es `same-origin` y no `same-site`: esa
+distinción es exactamente la razón por la que el archivo existe.
+
+`IAM_PANEL_ORIGIN` es obligatoria en producción: sin ella el Worker no
+arranca (adivinarla y errarle dejaría el panel inutilizable, y aceptarla
+ausente dejaría la puerta abierta). En local vale `http://localhost:8080`.
+
+### 8.8 — Cabeceras de seguridad
+
+Todas las respuestas del Worker llevan seis cabeceras (`routes/headers.go`,
+`SecurityHeaders` instalado con `r.Use()` al inicio de `Register`; los
+valores son constantes, sin modo "menos seguro"):
+
+| Cabecera | Valor | Por qué |
+|---|---|---|
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'` | `wasm-unsafe-eval` es lo que exige instanciar el WASM del panel (no es `unsafe-eval`, no habilita `eval()`); `frame-ancestors 'none'` es el anti-clickjacking que los navegadores aplican; `img-src` incluye `lh3.googleusercontent.com` porque los avatares de Google vienen de ahí |
+| `X-Frame-Options` | `DENY` | defensa en profundidad junto a `frame-ancestors` |
+| `X-Content-Type-Options` | `nosniff` | |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains` | dos años con subdominios; `iam` solo se sirve por HTTPS detrás de Cloudflare |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` | el panel no necesita ninguno |
+
+Anti-footgun conocido: el middleware corre por detrás de la compuerta de
+acceso y solo para rutas con handler —los assets estáticos del panel (el HTML
+del shell) los sirve Cloudflare, no el Worker, así que **no llevan estas
+cabeceras**. Se configuran en Cloudflare (Transform Rules o `_headers`, ver
+`docs/DEPLOY.md`) con los mismos valores; no se resuelve desde Go.
 
 ## 9. Dependencias
 

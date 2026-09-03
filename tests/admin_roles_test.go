@@ -17,7 +17,7 @@ func TestCreateRole_ThenListed(t *testing.T) {
 	secret, _ := config.GenerateClientSecret()
 	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
 
-	hCreate := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.CreateRoleHandler(b.DB, b.RBAC, b.IDs))
+	hCreate := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.CreateRoleHandler(b.DB, b.RBAC, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoles}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminCreateRoleRequest{ProjectId: "proj1", Code: "admin", Name: "Administrator", Description: "Desc"})
@@ -27,7 +27,7 @@ func TestCreateRole_ThenListed(t *testing.T) {
 		t.Fatalf("CreateRole status %d, want 201", ctx.Status)
 	}
 
-	hList := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.ListRolesHandler(b.DB))
+	hList := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListRolesHandler(b.DB, b.RBAC))
 	ctxList := &mock.Context{InMethod: "GET", InPath: config.PathAdminRoles + "?project_id=proj1"}
 	ctxList.SetUserID(u.Id)
 	hList(ctxList)
@@ -50,7 +50,7 @@ func TestSetRoleTTL(t *testing.T) {
 	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
 	_ = b.RBAC.CreateRole("proj1", "role1", model.RoleCode("editor"), "Editor", "")
 
-	hTTL := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.SetRoleTTLHandler(b.DB, b.RBAC, b.IDs))
+	hTTL := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.SetRoleTTLHandler(b.DB, b.RBAC, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoleTTL}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminRoleTTLRequest{ProjectId: "proj1", Code: "editor", SessionTtl: 600})
@@ -73,7 +73,7 @@ func TestDeleteRole(t *testing.T) {
 	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
 	_ = b.RBAC.CreateRole("proj1", "role1", model.RoleCode("editor"), "Editor", "")
 
-	hDelete := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.DeleteRoleHandler(b.DB, b.RBAC, b.IDs))
+	hDelete := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.DeleteRoleHandler(b.DB, b.RBAC, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoleDelete}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminRoleRefRequest{ProjectId: "proj1", Code: "editor"})
@@ -107,7 +107,7 @@ func TestRolesIsolatedByProject(t *testing.T) {
 	_ = b.RBAC.CreateRole("proj1", "r1", model.RoleCode("admin"), "Admin 1", "")
 	_ = b.RBAC.CreateRole("proj2", "r2", model.RoleCode("admin"), "Admin 2", "")
 
-	hList := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.ListRolesHandler(b.DB))
+	hList := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListRolesHandler(b.DB, b.RBAC))
 	ctxList := &mock.Context{InMethod: "GET", InPath: config.PathAdminRoles + "?project_id=proj1"}
 	ctxList.SetUserID(u.Id)
 	hList(ctxList)
@@ -116,5 +116,29 @@ func TestRolesIsolatedByProject(t *testing.T) {
 	_ = json.Decode(ctxList.ResponseBody(), &resp)
 	if len(resp.Roles) != 1 || resp.Roles[0].Name != "Admin 1" {
 		t.Fatalf("roles not isolated by project: %+v", resp.Roles)
+	}
+}
+
+// TestCreateRoleDuplicateCode409: crear dos roles con el mismo code en el
+// mismo proyecto devuelve 409 la segunda vez.
+func TestCreateRoleDuplicateCode409(t *testing.T) {
+	b, _ := setupPanel(t, "admin@example.com")
+	u, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
+	secret, _ := config.GenerateClientSecret()
+	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
+
+	hCreate := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.CreateRoleHandler(b.DB, b.RBAC, b.IDs))
+	call := func() int {
+		ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoles}
+		ctx.SetUserID(u.Id)
+		ctx.InBody = encodeBody(t, &config.AdminCreateRoleRequest{ProjectId: "proj1", Code: "editor", Name: "Editor", Description: ""})
+		hCreate(ctx)
+		return ctx.Status
+	}
+	if status := call(); status != 201 {
+		t.Fatalf("first CreateRole status %d, want 201", status)
+	}
+	if status := call(); status != 409 {
+		t.Fatalf("second CreateRole with duplicate code status %d, want 409", status)
 	}
 }

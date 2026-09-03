@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/veltylabs/iam/config"
 )
 
 func runCmd(t *testing.T, cmd string, args ...string) string {
@@ -102,8 +104,16 @@ func TestRouteTableIsSingleFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadDir routes: %v", err)
 	}
-	if len(entries) != 1 || entries[0].Name() != "routes.go" {
-		t.Fatalf("routes/ directory contains files other than routes.go")
+	// La tabla de rutas sigue siendo un solo archivo (routes.go); headers.go
+	// es el middleware de cabeceras de seguridad, no una tabla de rutas.
+	allowed := map[string]bool{"routes.go": true, "headers.go": true}
+	for _, e := range entries {
+		if !allowed[e.Name()] {
+			t.Fatalf("routes/ directory contains unexpected file %s (want only routes.go and headers.go)", e.Name())
+		}
+	}
+	if len(entries) != len(allowed) {
+		t.Fatalf("routes/ directory is missing an expected file: got %d entries, want %d", len(entries), len(allowed))
 	}
 }
 
@@ -121,6 +131,50 @@ func TestPanelViewsInViewGo(t *testing.T) {
 			if strings.Contains(string(content), "dom.Component") && strings.Contains(string(content), "func ") && strings.Contains(string(content), "View(") {
 				t.Fatalf("view builder component declared outside view.go in file %s", e.Name())
 			}
+		}
+	}
+}
+
+// TestAdminPathsAreUnderAPIPrefix: toda constante PathAdmin* empieza con
+// /api/ — la convención worker-first del ecosistema (I-8).
+func TestAdminPathsAreUnderAPIPrefix(t *testing.T) {
+	paths := map[string]string{
+		"PathAdminMe":            config.PathAdminMe,
+		"PathAdminProjects":      config.PathAdminProjects,
+		"PathAdminProjectRotate": config.PathAdminProjectRotate,
+		"PathAdminProjectActive": config.PathAdminProjectActive,
+		"PathAdminRoles":         config.PathAdminRoles,
+		"PathAdminRoleTTL":       config.PathAdminRoleTTL,
+		"PathAdminRoleDelete":    config.PathAdminRoleDelete,
+		"PathAdminRoleUsers":     config.PathAdminRoleUsers,
+		"PathAdminUserAssign":    config.PathAdminUserAssign,
+		"PathAdminUserRevoke":    config.PathAdminUserRevoke,
+		"PathAdminAudit":         config.PathAdminAudit,
+	}
+	for name, path := range paths {
+		if !strings.HasPrefix(path, "/api/") {
+			t.Errorf("%s = %q, want prefix /api/", name, path)
+		}
+	}
+}
+
+// TestNoLocalQueryParser: modules/admin/ no tiene su propio parser de query
+// string — usa router.QueryParam (Restricción #2).
+func TestNoLocalQueryParser(t *testing.T) {
+	entries, err := os.ReadDir("../modules/admin")
+	if err != nil {
+		t.Fatalf("ReadDir modules/admin: %v", err)
+	}
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".go") {
+			continue
+		}
+		content, err := os.ReadFile("../modules/admin/" + e.Name())
+		if err != nil {
+			t.Fatalf("ReadFile %s: %v", e.Name(), err)
+		}
+		if strings.Contains(string(content), "func getQueryParam") {
+			t.Errorf("modules/admin/%s still defines a local getQueryParam", e.Name())
 		}
 	}
 }

@@ -97,19 +97,68 @@ func NewProductionAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *r
 	return authMod, rbacSvc, nil
 }
 
+const (
+	httpsPrefix = "https://"
+	// hostTerminators son los caracteres que terminan el host en una URL tal
+	// como la interpreta un navegador. Cortar sólo en "/" — lo que hacía la
+	// versión anterior — deja pasar https://evil.com#.velty.cl: el sufijo
+	// ".velty.cl" queda dentro del "host" para esta función y fuera de él
+	// para el navegador, que va a evil.com. La lista es exhaustiva a propósito:
+	// "/" termina el path, "?" la query, "#" el fragmento y "\" lo normaliza
+	// el navegador a "/" antes de parsear.
+	hostTerminators = "/?#\\"
+	// userInfoSep separa userinfo@host. Todo lo que está ANTES es del
+	// atacante: https://x.velty.cl@evil.com apunta a evil.com.
+	userInfoSep = '@'
+)
+
 // isVeltyDomain reports whether url's host is velty.cl or a subdomain of
 // it — the same criterion misitio's consumer-facing dominio uses. Used ONLY
 // to validate a post-login redirect_uri; never relax this to a broader
 // pattern (no "*.example.com" for a third party) without re-reading
 // ARCHITECTURE.md §3.2's SSO scope decision.
 func isVeltyDomain(url string) bool {
-	const prefix = "https://"
-	if !fmt.HasPrefix(url, prefix) {
+	// Un byte de control embebido cambia cómo parsea el navegador y nunca
+	// aparece en una URL legítima.
+	for i := 0; i < len(url); i++ {
+		if url[i] < 0x20 || url[i] == 0x7F {
+			return false
+		}
+	}
+	// Prefijo en minúscula exacta: un redirect_uri legítimo de este
+	// ecosistema siempre lo escribe así.
+	if !fmt.HasPrefix(url, httpsPrefix) {
 		return false
 	}
-	host := url[len(prefix):]
-	if idx := fmt.Index(host, "/"); idx >= 0 {
-		host = host[:idx]
+	host := url[len(httpsPrefix):]
+	// Cortar en el primer terminador de host.
+	end := len(host)
+	for i := 0; i < len(host); i++ {
+		c := host[i]
+		isTerm := false
+		for j := 0; j < len(hostTerminators); j++ {
+			if c == hostTerminators[j] {
+				isTerm = true
+				break
+			}
+		}
+		if isTerm {
+			end = i
+			break
+		}
 	}
+	host = host[:end]
+	// Quedarse con lo que está después del último '@'.
+	for i := len(host) - 1; i >= 0; i-- {
+		if host[i] == userInfoSep {
+			host = host[i+1:]
+			break
+		}
+	}
+	if host == "" {
+		return false
+	}
+	// Los hosts son case-insensitive.
+	host = fmt.ToLower(host)
 	return host == SSOCookieDomain[1:] || fmt.HasSuffix(host, SSOCookieDomain)
 }

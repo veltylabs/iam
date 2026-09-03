@@ -15,7 +15,16 @@ import (
 // ErrProjectNotFound reports that a project id has no matching row.
 var ErrProjectNotFound = fmt.Err("project", "not", "found")
 
+// ErrMissingJWTSecret: sin JWT_SECRET no hay clave con la que derivar el
+// hash de un client_secret. HMAC sobre una clave vacía es matemática válida:
+// produce un hash que verifica, con una clave que cualquiera puede derivar.
+// Fallar es la única respuesta correcta — misma decisión que jwt.ErrEmptySecret.
+var ErrMissingJWTSecret = fmt.Err("iam", "JWT_SECRET", "required")
+
 const clientSecretPrefix = "iam_sk_"
+
+// clientSecretBytes es la entropía de un client_secret recién generado.
+const clientSecretBytes = 30
 
 // projectSecretKeyLabel separa la clave que hashea client_secret de la que
 // firma JWT. Reutilizar una sola clave para dos propositos hace que un fallo en
@@ -23,25 +32,33 @@ const clientSecretPrefix = "iam_sk_"
 // El sufijo de version permite rotar el esquema sin ambiguedad.
 const projectSecretKeyLabel = "iam:project-secret:v1"
 
-func projectSecretKey() []byte {
-	return hmac.HMACSHA256([]byte(env.Get(EnvJWTSecret)), []byte(projectSecretKeyLabel))
+func projectSecretKey() ([]byte, error) {
+	secret := env.Get(EnvJWTSecret)
+	if secret == "" {
+		return nil, ErrMissingJWTSecret
+	}
+	return hmac.HMACSHA256([]byte(secret), []byte(projectSecretKeyLabel)), nil
 }
 
 // hashProjectSecret deriva el hash almacenable de un client_secret. Es HMAC,
 // sin factor de costo, a proposito: un client_secret es aleatorio y de alta
 // entropia, asi que no hay nada que frenar ahi — solo CPU que quemar, y en un
 // Worker eso se paga en cada peticion contra un limite de 10 ms.
-func hashProjectSecret(plainSecret string) string {
-	return base64.URLEncode(hmac.HMACSHA256(projectSecretKey(), []byte(plainSecret)))
+func hashProjectSecret(plainSecret string) (string, error) {
+	key, err := projectSecretKey()
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncode(hmac.HMACSHA256(key, []byte(plainSecret))), nil
 }
 
 // GenerateClientSecret genera 30 bytes aleatorios en base64 url-safe con prefijo reconocible.
 func GenerateClientSecret() (string, error) {
-	buf := make([]byte, 30)
-	if err := rand.Read(buf); err != nil {
+	secret, err := rand.SecretN(clientSecretBytes)
+	if err != nil {
 		return "", err
 	}
-	return clientSecretPrefix + base64.URLEncode(buf), nil
+	return clientSecretPrefix + secret, nil
 }
 
 // MigrateSchema reconciles the schema this service owns (Project and AuditEntry).
@@ -65,8 +82,12 @@ func MigrateSchema(conn ddl.Execer, ddlCompiler ddl.Compiler) error {
 // CreateProject registra un proyecto nuevo y devuelve el client_secret EN
 // CLARO una sola vez — no se puede recuperar después, solo regenerar.
 func CreateProject(db *orm.DB, id, name, plainSecret string) error {
+	hash, err := hashProjectSecret(plainSecret)
+	if err != nil {
+		return err
+	}
 	return db.Create(&Project{
-		Id: id, Name: name, ClientSecretHash: hashProjectSecret(plainSecret),
+		Id: id, Name: name, ClientSecretHash: hash,
 		CreatedAt: time.Now() / 1e9, Active: 1,
 	})
 }
@@ -81,8 +102,12 @@ func RegenerateProjectSecret(db *orm.DB, projectID, newPlainSecret string) error
 	if len(rows) == 0 {
 		return ErrProjectNotFound
 	}
+	hash, err := hashProjectSecret(newPlainSecret)
+	if err != nil {
+		return err
+	}
 	proj := rows[0]
-	proj.ClientSecretHash = hashProjectSecret(newPlainSecret)
+	proj.ClientSecretHash = hash
 	return db.Update(proj, storage.Eq(Project_.Id, projectID))
 }
 
@@ -112,6 +137,9 @@ func ListProjects(db *orm.DB) (ProjectList, error) {
 }
 
 // VerifyProjectSecret compara en tiempo constante vía HMAC SHA256 — nunca ==.
+// Un error de clave faltante sale por el canal de error (→ 500), nunca como
+// false, nil (→ 403): un 403 le dice al llamador "tu secreto está mal" cuando
+// el problema es del servidor.
 func VerifyProjectSecret(db *orm.DB, projectID, plainSecret string) (bool, error) {
 	qb := db.Query(&Project{}).Where(Project_.Id).Eq(projectID)
 	rows, err := ReadAllProject(qb)
@@ -128,5 +156,9 @@ func VerifyProjectSecret(db *orm.DB, projectID, plainSecret string) (bool, error
 	if err != nil {
 		return false, nil
 	}
-	return hmac.HMACEqual(stored, hmac.HMACSHA256(projectSecretKey(), []byte(plainSecret))), nil
+	key, err := projectSecretKey()
+	if err != nil {
+		return false, err
+	}
+	return hmac.HMACEqual(stored, hmac.HMACSHA256(key, []byte(plainSecret))), nil
 }

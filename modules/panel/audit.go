@@ -21,7 +21,7 @@ func loadAuditList() {
 			return
 		}
 		var auditResp config.AdminAuditResponse
-		if err := json.Decode(resp.Body, &auditResp); err != nil {
+		if err := json.Decode(resp.Body(), &auditResp); err != nil {
 			setContainerText(IDAuditList, "Error decodificando la auditoría.")
 			return
 		}

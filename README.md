@@ -38,8 +38,37 @@ r := edge.NewRouter(edge.Config{
 
 `iam` entrega códigos de rol (`Scope`); el proyecto entrega la política.
 `Consumer.AssignRole` concede un rol en el proyecto del `Consumer` y es
-idempotente. Los proyectos y sus `client_secret` se administran desde el
-panel propio (`/` en `iam.velty.cl`).
+idempotente (un `roleCode` inexistente devuelve error: los roles se definen
+en el panel, no desde los consumidores). Los proyectos y sus `client_secret`
+se administran desde el panel propio (`/` en `iam.velty.cl`).
+
+## Desarrollo local (sin credenciales)
+
+El servidor local no necesita nada de Google ni de Cloudflare: usa
+identidades mock y base en memoria.
+
+```bash
+go run ./web            # http://localhost:8080 (o -server_port XXXX)
+go test ./tests/...     # suite completa
+GOOS=js GOARCH=wasm go build ./edge/ ./web/   # compuerta TinyGo
+```
+
+Abrí http://localhost:8080 y entrá con la identidad local
+(`admin@iam.local` — ya es administradora del panel, sin configurar
+`IAM_ADMIN_EMAILS`). El origen del panel en local es
+`http://localhost:8080` por defecto. Verificado: `/api/health` y
+`/api/health/db` responden `{"ok":true}`, `/api/admin/me` sin sesión da
+401, y las respuestas llevan las seis cabeceras de seguridad.
+
+## Publicar (con credenciales reales)
+
+Checklist única y ordenada en [docs/DEPLOY.md](docs/DEPLOY.md): 3 secrets
+de GitHub (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`,
+`D1_DATABASE_ID`), 6 variables de ejecución en Cloudflare (las 3 de
+Google, `JWT_SECRET`, `IAM_PANEL_ORIGIN`, `IAM_ADMIN_EMAILS`), cabeceras
+de seguridad para los assets estáticos (§3b), push a `main` y verificación
+con `curl`. Probá todo en local (sección anterior) antes de cargar las
+credenciales reales.
 
 ## Documentación
 
@@ -57,4 +86,7 @@ Bearer con tokens de autorización por proyecto y cookie SSO entre
 `iam` remotamente (dejó de montar su propio `authority.Module`/`rbac.Service`).
 Panel de administración completo (proyectos, lifecycle de `client_secret`,
 roles, usuarios y auditoría), servido por el mismo Worker con acceso controlado
-por `IAM_ADMIN_EMAILS` y transporte REST.
+por `IAM_ADMIN_EMAILS` y transporte REST. El servicio pasó una auditoría de
+seguridad completa (open redirect, cabeceras, CSRF entre subdominios hermanos
+y auditoría de denegaciones) y la cadena de librerías compartidas aguas arriba
+se corrigió en sus propios repos.

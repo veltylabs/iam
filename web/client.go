@@ -27,7 +27,7 @@ func main() {
 				ref.SetAttr("style", "display: none;")
 			}
 			var me config.AdminMeResponse
-			if err := json.Decode(resp.Body, &me); err != nil {
+			if err := json.Decode(resp.Body(), &me); err != nil {
 				panel.ShowStatus("Respuesta ilegible del servidor.")
 				return
 			}
@@ -38,3 +38,5 @@ func main() {
 	})
 	select {}
 }
+
+

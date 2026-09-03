@@ -108,6 +108,12 @@ Se desarrolla con el **daemon MCP de tinywasm**, igual que `misitio`
 mantenedor, aplicada desde ya aunque el panel hoy sea mínimo, para no
 tener que introducir el flujo después.
 
+Variables de entorno propias (además de `GOOGLE_*` y `JWT_SECRET`):
+`IAM_ADMIN_EMAILS` (quién entra al panel) e `IAM_PANEL_ORIGIN` (origen
+exacto del panel — sin ella el Worker no arranca; en local vale
+`http://localhost:8080`). Detalle en `docs/ARCHITECTURE.md` §8.7 y
+`docs/DEPLOY.md`.
+
 ## No hagas
 
 - **No recrees localmente un símbolo que falta en una librería** — ver

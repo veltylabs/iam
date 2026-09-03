@@ -3,6 +3,7 @@
 package config
 
 import (
+	"github.com/tinywasm/env"
 	"github.com/tinywasm/model"
 	"github.com/tinywasm/orm"
 )
@@ -20,5 +21,11 @@ func NewLocalBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, IDs: ids, JWTSecret: LocalJWTSecret}, nil
+	// Sólo para desarrollo: si IAM_PANEL_ORIGIN está fijada se respeta,
+	// si no se usa el origen del servidor local.
+	panelOrigin := env.Get(EnvPanelOrigin)
+	if panelOrigin == "" {
+		panelOrigin = LocalPanelOrigin
+	}
+	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, IDs: ids, JWTSecret: LocalJWTSecret, PanelOrigin: panelOrigin}, nil
 }

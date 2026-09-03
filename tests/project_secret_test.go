@@ -89,3 +89,39 @@ func TestProjectSecretKeyIsDerivedNotReused(t *testing.T) {
 		t.Errorf("stored hash matched raw jwt secret")
 	}
 }
+
+// TestVerifyProjectSecret_MissingJWTSecretIs500Not403: sin JWT_SECRET no hay
+// clave con la que verificar. El error sale por el canal de error (→ 500 en
+// el handler), nunca como false, nil (→ 403): un 403 le diría al llamador
+// "tu secreto está mal" cuando el problema es del servidor.
+func TestVerifyProjectSecret_MissingJWTSecretIs500Not403(t *testing.T) {
+	db, _, _, _ := setup(t)
+	const projectID = "proj-no-jwt-secret"
+	if err := config.CreateProject(db, projectID, "No JWT Secret", "some-secret"); err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+
+	t.Setenv(config.EnvJWTSecret, "")
+	ok, err := config.VerifyProjectSecret(db, projectID, "some-secret")
+	if err == nil {
+		t.Fatalf("VerifyProjectSecret without JWT_SECRET: got (ok=%v, nil error), want an error", ok)
+	}
+	if ok {
+		t.Fatalf("VerifyProjectSecret without JWT_SECRET: got ok=true")
+	}
+	if err != config.ErrMissingJWTSecret {
+		t.Fatalf("VerifyProjectSecret without JWT_SECRET: got %v, want ErrMissingJWTSecret", err)
+	}
+}
+
+// TestCreateProject_FailsWithoutJWTSecret: sin JWT_SECRET no se puede derivar
+// el hash de un client_secret, así que crear un proyecto falla.
+func TestCreateProject_FailsWithoutJWTSecret(t *testing.T) {
+	db, _, _, _ := setup(t)
+	t.Setenv(config.EnvJWTSecret, "")
+	if err := config.CreateProject(db, "proj-fail", "Fail App", "secret"); err == nil {
+		t.Fatal("CreateProject without JWT_SECRET: got nil error, want ErrMissingJWTSecret")
+	} else if err != config.ErrMissingJWTSecret {
+		t.Fatalf("CreateProject without JWT_SECRET: got %v, want ErrMissingJWTSecret", err)
+	}
+}
