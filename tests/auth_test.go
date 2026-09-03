@@ -5,7 +5,6 @@ import (
 
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/storage/mem"
-	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
 )
 
@@ -13,9 +12,9 @@ import (
 // Google: arrancar con OAuth roto en silencio es peor que no arrancar.
 func TestProductionAuthFailsWithoutGoogleEnv(t *testing.T) {
 	db := orm.New(mem.New())
-	ids, err := unixid.NewUnixID()
+	ids, err := config.NewIDs()
 	if err != nil {
-		t.Fatalf("unixid: %v", err)
+		t.Fatalf("ids: %v", err)
 	}
 	t.Setenv(config.EnvGoogleClientID, "")
 	t.Setenv(config.EnvGoogleClientSecret, "")

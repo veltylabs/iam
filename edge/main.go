@@ -6,7 +6,6 @@ import (
 	"github.com/tinywasm/cloudflare/d1"
 	"github.com/tinywasm/cloudflare/edge"
 	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/routes"
 )
@@ -18,9 +17,9 @@ func main() {
 		return
 	}
 
-	ids, err := unixid.NewUnixID()
+	ids, err := config.NewIDs()
 	if err != nil {
-		fmt.Println("unixid:", err)
+		fmt.Println("ids:", err)
 		return
 	}
 
@@ -33,6 +32,6 @@ func main() {
 	r := edge.NewRouter(edge.Config{
 		Authn: backend.Auth.Authenticate(),
 	})
-	routes.Register(r, db, backend.Auth, backend.RBAC, backend.JWTSecret, config.PanelAdminList(), ids)
+	routes.Register(r, db, backend.Auth, backend.RBAC, backend.JWTSecret, config.PanelAdminList(), ids, backend.PanelOrigin)
 	edge.Serve(r)
 }

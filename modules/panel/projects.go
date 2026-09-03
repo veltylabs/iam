@@ -11,14 +11,13 @@ import (
 	"github.com/tinywasm/json"
 	"github.com/tinywasm/model"
 	"github.com/tinywasm/time"
-	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
 )
 
 func wireProjects() {
 	loadProjectsList()
 
-	idGen, _ := unixid.NewUnixID()
+	idGen, _ := config.NewIDs()
 	f, err := form.New(IDProjectsNew, &config.AdminCreateProjectRequest{}, idGen)
 	if err == nil && f != nil {
 		f.SubmitLabel("Crear proyecto")
@@ -39,7 +38,7 @@ func wireProjects() {
 					return
 				}
 				var secretResp config.AdminSecretResponse
-				if err := json.Decode(resp.Body, &secretResp); err == nil {
+				if err := json.Decode(resp.Body(), &secretResp); err == nil {
 					renderSecret(secretResp.ClientSecret)
 				}
 				done(nil)
@@ -69,7 +68,7 @@ func loadProjectsList() {
 			return
 		}
 		var projResp config.AdminProjectsResponse
-		if err := json.Decode(resp.Body, &projResp); err != nil {
+		if err := json.Decode(resp.Body(), &projResp); err != nil {
 			setContainerText(IDProjectsList, "Error decodificando la lista.")
 			return
 		}
@@ -103,7 +102,7 @@ func loadProjectsList() {
 				fetch.Post(config.PathAdminProjectRotate).ContentTypeJSON().Body(buf).Send(func(r *fetch.Response, err error) {
 					if err == nil && r.Status == 200 {
 						var secretResp config.AdminSecretResponse
-						if err := json.Decode(r.Body, &secretResp); err == nil {
+						if err := json.Decode(r.Body(), &secretResp); err == nil {
 							renderSecret(secretResp.ClientSecret)
 						}
 					}

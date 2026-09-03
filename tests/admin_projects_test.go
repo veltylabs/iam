@@ -25,7 +25,7 @@ func TestCreateProject_ReturnsSecretOnceAndVerifies(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
 	u, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
 
-	h := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.CreateProjectHandler(b.DB, b.IDs))
+	h := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.CreateProjectHandler(b.DB, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminProjects}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminCreateProjectRequest{Name: "Test App"})
@@ -53,7 +53,7 @@ func TestCreateProject_ReturnsSecretOnceAndVerifies(t *testing.T) {
 		t.Fatalf("VerifyProjectSecret accepted wrong secret")
 	}
 
-	hList := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
+	hList := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
 	ctxList := &mock.Context{InMethod: "GET", InPath: config.PathAdminProjects}
 	ctxList.SetUserID(u.Id)
 	hList(ctxList)
@@ -72,7 +72,7 @@ func TestRotateSecret_OldStopsVerifying(t *testing.T) {
 	secret1, _ := config.GenerateClientSecret()
 	_ = config.CreateProject(b.DB, "proj1", "App 1", secret1)
 
-	hRotate := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.RotateSecretHandler(b.DB, b.IDs))
+	hRotate := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.RotateSecretHandler(b.DB, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminProjectRotate}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminProjectIDRequest{ProjectId: "proj1"})
@@ -101,7 +101,7 @@ func TestRotateSecret_UnknownProject404(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
 	u, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
 
-	hRotate := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.RotateSecretHandler(b.DB, b.IDs))
+	hRotate := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.RotateSecretHandler(b.DB, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminProjectRotate}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminProjectIDRequest{ProjectId: "non-existent"})
@@ -119,7 +119,7 @@ func TestDeactivateProject_BlocksTokenIssue(t *testing.T) {
 	secret, _ := config.GenerateClientSecret()
 	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
 
-	hActive := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.SetActiveHandler(b.DB, b.IDs))
+	hActive := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.SetActiveHandler(b.DB, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminProjectActive}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminSetActiveRequest{ProjectId: "proj1", Active: false})

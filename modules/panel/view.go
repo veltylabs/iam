@@ -5,62 +5,66 @@ package panel
 import (
 	"github.com/tinywasm/dom"
 	"github.com/tinywasm/html"
-	"github.com/tinywasm/layout/rightpanel"
 )
 
-type moduleID string
+// Cada vista es un componente propio: Render() arma el marcado (contenedores
+// vacíos identificados por los ID* de constants.go) y OnMount() —que tinywasm/dom
+// invoca DESPUÉS de inyectar el HTML en el DOM— dispara el cableado (fetch +
+// forms). El cableado NO puede correr en Render(): los nodos todavía no existen.
+//
+// No se usa rightpanel.RightPanel aquí: su wrapper toma su id de Module.ModelName(),
+// que colisiona con el <section id="{moduleID}"> que platformd ya pone alrededor
+// de la vista (dom entra en pánico por id duplicado).
 
-func (m moduleID) ModelName() string { return string(m) }
+type projectsPanel struct{ dom.Element }
 
-func newMountedView(comp dom.Component, onMount func()) dom.Component {
-	if onMount != nil {
-		onMount()
-	}
-	return comp
+func (p *projectsPanel) Render() *dom.Element {
+	return html.Div().Class("iam-panel-view").Child(
+		html.H2().Text("Proyectos"),
+		html.Div().ID(IDProjectsSecret),
+		html.Div().ID(IDProjectsNew),
+		html.Div().ID(IDProjectsList),
+	)
 }
+func (p *projectsPanel) Init(ctx dom.Ctx) { wireProjects() }
 
-func projectsView() dom.Component {
-	rp := &rightpanel.RightPanel{
-		Module: moduleID(ModuleProjects),
-		Title:  "Proyectos",
-		Article: html.Div().Child(
-			html.Div().ID(IDProjectsSecret),
-			html.Div().ID(IDProjectsList),
-		),
-		Aside: html.Div().ID(IDProjectsNew),
-	}
-	return newMountedView(rp, wireProjects)
-}
+type rolesPanel struct{ dom.Element }
 
-func rolesView() dom.Component {
-	rp := &rightpanel.RightPanel{
-		Module: moduleID(ModuleRoles),
-		Title:  "Roles",
-		HeadControls: html.Div().Child(
+func (p *rolesPanel) Render() *dom.Element {
+	return html.Div().Class("iam-panel-view").Child(
+		html.H2().Text("Roles"),
+		html.Div().Child(
 			html.Label().Text("Proyecto: "),
 			html.Input("select").ID(IDRolesProject),
 		),
-		Article: html.Div().ID(IDRolesList),
-		Aside:   html.Div().ID(IDRolesNew),
-	}
-	return newMountedView(rp, wireRoles)
+		html.Div().ID(IDRolesNew),
+		html.Div().ID(IDRolesList),
+	)
 }
+func (p *rolesPanel) Init(ctx dom.Ctx) { wireRoles() }
 
-func usersView() dom.Component {
-	rp := &rightpanel.RightPanel{
-		Module:  moduleID(ModuleUsers),
-		Title:   "Usuarios y Asignación de Roles",
-		Article: html.Div().ID(IDUsersList),
-		Aside:   html.Div().ID(IDUsersForm),
-	}
-	return newMountedView(rp, wireUsers)
-}
+type usersPanel struct{ dom.Element }
 
-func auditView() dom.Component {
-	rp := &rightpanel.RightPanel{
-		Module:  moduleID(ModuleAudit),
-		Title:   "Registro de Auditoría",
-		Article: html.Div().ID(IDAuditList),
-	}
-	return newMountedView(rp, wireAudit)
+func (p *usersPanel) Render() *dom.Element {
+	return html.Div().Class("iam-panel-view").Child(
+		html.H2().Text("Usuarios y asignación de roles"),
+		html.Div().ID(IDUsersForm),
+		html.Div().ID(IDUsersList),
+	)
 }
+func (p *usersPanel) Init(ctx dom.Ctx) { wireUsers() }
+
+type auditPanel struct{ dom.Element }
+
+func (p *auditPanel) Render() *dom.Element {
+	return html.Div().Class("iam-panel-view").Child(
+		html.H2().Text("Registro de auditoría"),
+		html.Div().ID(IDAuditList),
+	)
+}
+func (p *auditPanel) Init(ctx dom.Ctx) { wireAudit() }
+
+func projectsView() dom.Component { return &projectsPanel{} }
+func rolesView() dom.Component    { return &rolesPanel{} }
+func usersView() dom.Component    { return &usersPanel{} }
+func auditView() dom.Component    { return &auditPanel{} }

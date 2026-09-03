@@ -5,7 +5,6 @@ import (
 
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/storage/mem"
-	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
 )
 
@@ -14,12 +13,13 @@ func TestProductionBackend_DoesNotMigrate(t *testing.T) {
 	t.Setenv(config.EnvGoogleClientSecret, "test-client-secret")
 	t.Setenv(config.EnvGoogleRedirectURL, "http://localhost:8080/oauth/callback/google")
 	t.Setenv(config.EnvJWTSecret, "test-jwt-secret-32-bytes-long-0000")
+	t.Setenv(config.EnvPanelOrigin, "https://iam.velty.cl")
 
 	// DB is intentionally empty (no tables migrated).
 	db := orm.New(mem.New())
-	ids, err := unixid.NewUnixID()
+	ids, err := config.NewIDs()
 	if err != nil {
-		t.Fatalf("unixid: %v", err)
+		t.Fatalf("ids: %v", err)
 	}
 
 	backend, err := config.NewProductionBackend(db, ids)

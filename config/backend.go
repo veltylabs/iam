@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/tinywasm/auth/authority"
 	"github.com/tinywasm/env"
+	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/model"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
@@ -22,6 +23,10 @@ type Backend struct {
 	// de autorización project-scoped (Etapa 3, ver routes.Token) — un solo
 	// secreto HS256 para todo iam.
 	JWTSecret []byte
+	// PanelOrigin es el origen exacto desde el que se sirve el panel
+	// (EnvPanelOrigin). Las mutaciones de /api/admin/* sólo aceptan
+	// peticiones de este origen (ver modules/admin/origin.go).
+	PanelOrigin string
 }
 
 // NewProductionBackend inicializa identidad, RBAC y el esquema de
@@ -34,5 +39,9 @@ func NewProductionBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 	// NewProductionAuth ya validó que EnvJWTSecret existe (falla antes de
 	// llegar aquí si falta) — releerla es una lectura trivial, no lógica
 	// duplicada.
-	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, IDs: ids, JWTSecret: []byte(env.Get(EnvJWTSecret))}, nil
+	panelOrigin := env.Get(EnvPanelOrigin)
+	if panelOrigin == "" {
+		return nil, fmt.Errf("iam: missing required environment variable %s", EnvPanelOrigin)
+	}
+	return &Backend{Auth: authMod, RBAC: rbacSvc, DB: db, IDs: ids, JWTSecret: []byte(env.Get(EnvJWTSecret)), PanelOrigin: panelOrigin}, nil
 }

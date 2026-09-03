@@ -10,7 +10,6 @@ import (
 	"github.com/tinywasm/html"
 	"github.com/tinywasm/json"
 	"github.com/tinywasm/model"
-	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
 )
 
@@ -34,7 +33,7 @@ func loadProjectsSelect() {
 			return
 		}
 		var projResp config.AdminProjectsResponse
-		if err := json.Decode(resp.Body, &projResp); err != nil {
+		if err := json.Decode(resp.Body(), &projResp); err != nil {
 			return
 		}
 
@@ -68,7 +67,7 @@ func loadRolesViewForProject(projectID string) {
 		return
 	}
 
-	idGen, _ := unixid.NewUnixID()
+	idGen, _ := config.NewIDs()
 	req := &config.AdminCreateRoleRequest{ProjectId: projectID}
 	f, err := form.New(IDRolesNew, req, idGen)
 	if err == nil && f != nil {
@@ -108,7 +107,7 @@ func loadRolesList(projectID string) {
 			return
 		}
 		var rolesResp config.AdminRolesResponse
-		if err := json.Decode(resp.Body, &rolesResp); err != nil {
+		if err := json.Decode(resp.Body(), &rolesResp); err != nil {
 			setContainerText(IDRolesList, "Error decodificando los roles.")
 			return
 		}

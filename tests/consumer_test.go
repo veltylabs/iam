@@ -235,6 +235,10 @@ func TestAssignRoleIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
+	// /api/roles/assign ya no crea roles: el rol tiene que existir.
+	if err := backend.RBAC.CreateRole(projectID, "r-editor", model.RoleCode("editor"), "Editor", ""); err != nil {
+		t.Fatalf("CreateRole: %v", err)
+	}
 	handler := routes.AssignRole(backend.DB, backend.RBAC)
 
 	call := func(userID, roleCode string) int {
@@ -284,6 +288,9 @@ func TestAssignRoleIsScopedToTheProject(t *testing.T) {
 	u, err := backend.Auth.CreateUser("scoped@test.com", "Scoped", "")
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
+	}
+	if err := backend.RBAC.CreateRole(projectID, "r-editor", model.RoleCode("editor"), "Editor", ""); err != nil {
+		t.Fatalf("CreateRole: %v", err)
 	}
 
 	var gotBody string

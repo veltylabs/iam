@@ -45,6 +45,7 @@ const (
 const (
 	ErrMsgAssignRoleUserRequired = "iam client: AssignRole: userID is required"
 	ErrMsgAssignRoleCodeRequired = "iam client: AssignRole: roleCode is required"
+	ErrMsgAssignRoleUnknownCode  = "iam client: AssignRole: role code not found"
 )
 
 // New valida la configuración y falla rápido si falta algo. Arrancar sin poder
@@ -134,12 +135,9 @@ func (r *assignRoleResponse) EncodeFields(w model.FieldWriter) {}
 func (r *assignRoleResponse) DecodeFields(fr model.FieldReader) {}
 
 // AssignRole concede roleCode al usuario en ESTE proyecto. Idempotente: si ya
-// lo tiene, no es un error.
-//
-// Es la contraparte de Scope: un consumidor no solo lee los roles que iam le
-// entrega, tambien necesita concederlos cuando su propio dominio decide que
-// alguien pasa a tener acceso. Sin esto, el consumidor solo podria sembrar
-// roles por lista de correos conocida de antemano.
+// lo tiene, no es un error. Si el roleCode no existe en el proyecto devuelve
+// un error (ErrMsgAssignRoleUnknownCode): un consumidor no define roles, los
+// usa — definirlos es del panel.
 func (c *Consumer) AssignRole(userID string, roleCode model.RoleCode) error {
 	if userID == "" {
 		return fmt.Err(ErrMsgAssignRoleUserRequired)
@@ -161,6 +159,9 @@ func (c *Consumer) AssignRole(userID string, roleCode model.RoleCode) error {
 		Body(body))
 	if err != nil {
 		return err
+	}
+	if resp.Status == 404 {
+		return fmt.Err(ErrMsgAssignRoleUnknownCode)
 	}
 	if resp.Status != 200 {
 		return fmt.Errf("iam: POST /api/roles/assign returned status %d", resp.Status)

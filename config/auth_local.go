@@ -47,7 +47,10 @@ func NewLocalAuthWithScenarios(db *orm.DB, ids model.IDGenerator, scenarios []lo
 			return nil, nil, err
 		}
 	}
-	mockUser := auth.OAuthUserInfo{ID: string(scenarios[0].ID), Email: scenarios[0].Email, Name: scenarios[0].Name, Avatar: scenarios[0].Avatar}
+	// El mock simula a Google, que siempre entrega emails verificados: sin
+	// EmailVerified el flujo nuevo de auth rechaza el login cuando el email
+	// ya existe (protección anti-takeover) y el escenario local no entraría.
+	mockUser := auth.OAuthUserInfo{ID: string(scenarios[0].ID), Email: scenarios[0].Email, Name: scenarios[0].Name, Avatar: scenarios[0].Avatar, EmailVerified: true}
 	mockProv := &googlemock.MockProvider{User: mockUser}
 	authMod.Enable(oauth2.New(authMod, authMod, authMod, []auth.OAuthProvider{mockProv},
 		oauth2.WithRedirectValidator(isVeltyDomain),

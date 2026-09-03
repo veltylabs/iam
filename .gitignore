@@ -25,3 +25,5 @@ go.work
 
 # local build of the migration binary (cmd/migrate) — built by CI, never committed
 /migrate
+web/public/*
+web/server

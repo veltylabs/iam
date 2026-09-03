@@ -2,8 +2,8 @@
 
 // Command migrate reconciles iam's database schema. It runs once per
 // deploy, from CI, against D1's HTTP API — never inside the Worker, whose
-// main() must not do schema I/O (see docs/PLAN.md history: that cost
-// 8.5–10.4 s per cold start).
+// main() must not do schema I/O (see config.MigrateSchema: ~10 D1 round
+// trips on every isolate cold start).
 package main
 
 import (

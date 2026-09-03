@@ -10,12 +10,11 @@ import (
 	"github.com/tinywasm/html"
 	"github.com/tinywasm/json"
 	"github.com/tinywasm/model"
-	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
 )
 
 func wireUsers() {
-	idGen, _ := unixid.NewUnixID()
+	idGen, _ := config.NewIDs()
 	f, err := form.New(IDUsersForm, &config.AdminUserRoleRequest{}, idGen)
 	if err == nil && f != nil {
 		f.SubmitLabel("Asignar rol")
@@ -36,7 +35,7 @@ func wireUsers() {
 					return
 				}
 				var assignResp config.AdminAssignResponse
-				if err := json.Decode(resp.Body, &assignResp); err == nil {
+				if err := json.Decode(resp.Body(), &assignResp); err == nil {
 					ShowStatus("Rol asignado. Sub: " + assignResp.Sub)
 				}
 				done(nil)
@@ -60,7 +59,7 @@ func loadRoleUsersList(projectID, code string) {
 			return
 		}
 		var usersResp config.AdminRoleUsersResponse
-		if err := json.Decode(resp.Body, &usersResp); err != nil {
+		if err := json.Decode(resp.Body(), &usersResp); err != nil {
 			setContainerText(IDUsersList, "Error decodificando usuarios.")
 			return
 		}

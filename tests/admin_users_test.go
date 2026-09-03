@@ -17,7 +17,7 @@ func TestAssignRole_CreatesUserByEmail(t *testing.T) {
 	_ = config.CreateProject(b.DB, "proj1", "App 1", "secret1")
 	_ = b.RBAC.CreateRole("proj1", "r1", model.RoleCode("editor"), "Editor", "")
 
-	hAssign := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
+	hAssign := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminUserAssign}
 	ctx.SetUserID(adminU.Id)
 	ctx.InBody = encodeBody(t, &config.AdminUserRoleRequest{ProjectId: "proj1", Code: "editor", Email: "newuser@example.com"})
@@ -58,7 +58,7 @@ func TestAssignRole_UnknownRole404(t *testing.T) {
 	adminU, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
 	_ = config.CreateProject(b.DB, "proj1", "App 1", "secret1")
 
-	hAssign := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
+	hAssign := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminUserAssign}
 	ctx.SetUserID(adminU.Id)
 	ctx.InBody = encodeBody(t, &config.AdminUserRoleRequest{ProjectId: "proj1", Code: "unknown", Email: "user@example.com"})
@@ -79,7 +79,7 @@ func TestRevokeRole(t *testing.T) {
 	role, _ := b.RBAC.GetRoleByCode("proj1", model.RoleCode("editor"))
 	_ = b.RBAC.AssignRole("proj1", targetU.Id, role.Id)
 
-	hRevoke := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.RevokeUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
+	hRevoke := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.RevokeUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminUserRevoke}
 	ctx.SetUserID(adminU.Id)
 	ctx.InBody = encodeBody(t, &config.AdminUserRoleRequest{ProjectId: "proj1", Code: "editor", Email: "target@example.com"})
@@ -89,7 +89,7 @@ func TestRevokeRole(t *testing.T) {
 		t.Fatalf("RevokeUser status %d, want 200", ctx.Status)
 	}
 
-	hUsers := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.ListRoleUsersHandler(b.DB, b.Auth, b.RBAC))
+	hUsers := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListRoleUsersHandler(b.DB, b.Auth, b.RBAC))
 	ctxList := &mock.Context{InMethod: "GET", InPath: config.PathAdminRoleUsers + "?project_id=proj1&code=editor"}
 	ctxList.SetUserID(adminU.Id)
 	hUsers(ctxList)
@@ -107,7 +107,7 @@ func TestAssignRole_SubMatchesLoginSub(t *testing.T) {
 	_ = config.CreateProject(b.DB, "proj1", "App 1", "secret1")
 	_ = b.RBAC.CreateRole("proj1", "r1", model.RoleCode("editor"), "Editor", "")
 
-	hAssign := admin.RequirePanelAdmin(b.Auth, []string{"admin@example.com"}, admin.AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
+	hAssign := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminUserAssign}
 	ctx.SetUserID(adminU.Id)
 	ctx.InBody = encodeBody(t, &config.AdminUserRoleRequest{ProjectId: "proj1", Code: "editor", Email: "someone@example.com"})
@@ -119,5 +119,48 @@ func TestAssignRole_SubMatchesLoginSub(t *testing.T) {
 	u, _ := b.Auth.UserByEmail("someone@example.com")
 	if u.Id != assignResp.Sub {
 		t.Fatalf("assigned sub %s != UserByEmail sub %s", assignResp.Sub, u.Id)
+	}
+}
+
+// TestRevokeInvalidatesRBACCache es el test central de I-4: asignar por el
+// handler → HasPermission true → revocar por el handler → HasPermission
+// false, con la MISMA instancia de Service. La versión anterior borraba la
+// fila a mano y salteaba el Service, así que el permiso revocado se seguía
+// concediendo hasta el desalojo del caché.
+func TestRevokeInvalidatesRBACCache(t *testing.T) {
+	b, _ := setupPanel(t, "admin@example.com")
+	adminU, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
+	_ = config.CreateProject(b.DB, "proj-cache", "Cache App", "secret-cache")
+	_ = b.RBAC.CreateRole("proj-cache", "r1", model.RoleCode("editor"), "Editor", "")
+	_ = b.RBAC.CreatePermission("proj-cache", "p1", "Read docs", "docs", model.Read)
+	_ = b.RBAC.AssignPermission("proj-cache", "r1", "p1")
+
+	hAssign := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
+	ctxAssign := &mock.Context{InMethod: "POST", InPath: config.PathAdminUserAssign}
+	ctxAssign.SetUserID(adminU.Id)
+	ctxAssign.InBody = encodeBody(t, &config.AdminUserRoleRequest{ProjectId: "proj-cache", Code: "editor", Email: "cached@example.com"})
+	hAssign(ctxAssign)
+	if ctxAssign.Status != 200 {
+		t.Fatalf("AssignUser status %d, want 200", ctxAssign.Status)
+	}
+
+	target, err := b.Auth.UserByEmail("cached@example.com")
+	if err != nil {
+		t.Fatalf("UserByEmail: %v", err)
+	}
+	if !b.RBAC.Can("proj-cache", target.Id, "docs", model.Read) {
+		t.Fatal("expected permission granted after assign")
+	}
+
+	hRevoke := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.RevokeUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))
+	ctxRevoke := &mock.Context{InMethod: "POST", InPath: config.PathAdminUserRevoke}
+	ctxRevoke.SetUserID(adminU.Id)
+	ctxRevoke.InBody = encodeBody(t, &config.AdminUserRoleRequest{ProjectId: "proj-cache", Code: "editor", Email: "cached@example.com"})
+	hRevoke(ctxRevoke)
+	if ctxRevoke.Status != 200 {
+		t.Fatalf("RevokeUser status %d, want 200", ctxRevoke.Status)
+	}
+	if b.RBAC.Can("proj-cache", target.Id, "docs", model.Read) {
+		t.Fatal("revoked permission still granted: RevokeUserHandler did not invalidate the RBAC cache")
 	}
 }

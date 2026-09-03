@@ -7,14 +7,14 @@ import (
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
 	"github.com/tinywasm/router"
-	"github.com/tinywasm/storage"
 	"github.com/veltylabs/iam/config"
 )
 
 // RequirePanelAdmin envuelve un handler: 401 sin sesión, 403 si el correo de
 // la sesión no está en adminEmails. En el camino feliz pasa el correo del
-// admin al handler (para auditoría).
-func RequirePanelAdmin(authMod *authority.Module, adminEmails []string, h func(ctx router.Context, adminEmail string)) router.HandlerFunc {
+// admin al handler (para auditoría). La denegación también se audita
+// (panel.access_denied) con el email de quien intentó entrar.
+func RequirePanelAdmin(db *orm.DB, ids model.IDGenerator, authMod *authority.Module, adminEmails []string, h func(ctx router.Context, adminEmail string)) router.HandlerFunc {
 	return func(ctx router.Context) {
 		uid := ctx.UserID()
 		if uid == "" {
@@ -27,28 +27,14 @@ func RequirePanelAdmin(authMod *authority.Module, adminEmails []string, h func(c
 			return
 		}
 		if !config.IsPanelAdmin(u.Email, adminEmails) {
+			if err := config.RecordAudit(db, ids, u.Email, config.AuditPanelDenied, u.Email, ""); err != nil {
+				fmt.Println("audit:", err)
+			}
 			ctx.WriteStatus(403)
 			return
 		}
 		h(ctx, u.Email)
 	}
-}
-
-// helper para parsear query params de Path()
-func getQueryParam(path, key string) string {
-	idx := fmt.Index(path, "?")
-	if idx == -1 {
-		return ""
-	}
-	query := path[idx+1:]
-	parts := fmt.Split(query, "&")
-	prefix := key + "="
-	for _, p := range parts {
-		if fmt.HasPrefix(p, prefix) {
-			return p[len(prefix):]
-		}
-	}
-	return ""
 }
 
 // Me responde con datos del administrador actual.
@@ -179,14 +165,14 @@ func SetActiveHandler(db *orm.DB, ids model.IDGenerator) func(ctx router.Context
 }
 
 // ListRolesHandler lista los roles de un proyecto dado por query param ?project_id=.
-func ListRolesHandler(db *orm.DB) func(ctx router.Context, adminEmail string) {
+func ListRolesHandler(db *orm.DB, rbacSvc *rbac.Service) func(ctx router.Context, adminEmail string) {
 	return func(ctx router.Context, adminEmail string) {
-		projectID := getQueryParam(ctx.Path(), "project_id")
-		if fmt.TrimSpace(projectID) == "" {
+		projectID, ok := router.QueryParam(ctx.Path(), "project_id")
+		if !ok || fmt.TrimSpace(projectID) == "" {
 			ctx.WriteStatus(400)
 			return
 		}
-		roles, err := ListRoles(db, projectID)
+		roles, err := ListRoles(db, rbacSvc, projectID)
 		if err != nil {
 			ctx.WriteStatus(500)
 			return
@@ -206,6 +192,10 @@ func CreateRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 		}
 		roleID := ids.NewID()
 		if err := rbacSvc.CreateRole(req.ProjectId, roleID, model.RoleCode(req.Code), req.Name, req.Description); err != nil {
+			if err == rbac.ErrDuplicateRoleCode {
+				ctx.WriteStatus(409)
+				return
+			}
 			ctx.WriteStatus(500)
 			return
 		}
@@ -228,7 +218,7 @@ func SetRoleTTLHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 		}
 		role, err := rbacSvc.GetRoleByCode(req.ProjectId, model.RoleCode(req.Code))
 		if err != nil {
-			if err == orm.ErrNotFound {
+			if err == rbac.ErrRoleNotFound {
 				ctx.WriteStatus(404)
 				return
 			}
@@ -257,16 +247,11 @@ func DeleteRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 			ctx.WriteStatus(400)
 			return
 		}
-		role, err := rbacSvc.GetRoleByCode(req.ProjectId, model.RoleCode(req.Code))
-		if err != nil {
-			if err == orm.ErrNotFound {
+		if err := rbacSvc.DeleteRoleByCode(req.ProjectId, model.RoleCode(req.Code)); err != nil {
+			if err == rbac.ErrRoleNotFound {
 				ctx.WriteStatus(404)
 				return
 			}
-			ctx.WriteStatus(500)
-			return
-		}
-		if err := rbacSvc.DeleteRole(req.ProjectId, role.Id); err != nil {
 			ctx.WriteStatus(500)
 			return
 		}
@@ -282,15 +267,19 @@ func DeleteRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 // ListRoleUsersHandler lista usuarios asignados a un rol (?project_id=&code=).
 func ListRoleUsersHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service) func(ctx router.Context, adminEmail string) {
 	return func(ctx router.Context, adminEmail string) {
-		projectID := getQueryParam(ctx.Path(), "project_id")
-		code := getQueryParam(ctx.Path(), "code")
-		if fmt.TrimSpace(projectID) == "" || fmt.TrimSpace(code) == "" {
+		projectID, ok := router.QueryParam(ctx.Path(), "project_id")
+		if !ok || fmt.TrimSpace(projectID) == "" {
+			ctx.WriteStatus(400)
+			return
+		}
+		code, ok := router.QueryParam(ctx.Path(), "code")
+		if !ok || fmt.TrimSpace(code) == "" {
 			ctx.WriteStatus(400)
 			return
 		}
 		users, err := ListRoleUsers(db, authMod, rbacSvc, projectID, code)
 		if err != nil {
-			if err == orm.ErrNotFound {
+			if err == rbac.ErrRoleNotFound {
 				ctx.WriteStatus(404)
 				return
 			}
@@ -318,16 +307,11 @@ func AssignUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Serv
 				return
 			}
 		}
-		role, err := rbacSvc.GetRoleByCode(req.ProjectId, model.RoleCode(req.Code))
-		if err != nil {
-			if err == orm.ErrNotFound {
+		if err := rbacSvc.AssignRoleByCode(req.ProjectId, u.Id, model.RoleCode(req.Code)); err != nil {
+			if err == rbac.ErrRoleNotFound {
 				ctx.WriteStatus(404)
 				return
 			}
-			ctx.WriteStatus(500)
-			return
-		}
-		if err := rbacSvc.AssignRole(req.ProjectId, u.Id, role.Id); err != nil {
 			ctx.WriteStatus(500)
 			return
 		}
@@ -353,16 +337,11 @@ func RevokeUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Serv
 			ctx.WriteStatus(404)
 			return
 		}
-		role, err := rbacSvc.GetRoleByCode(req.ProjectId, model.RoleCode(req.Code))
-		if err != nil {
-			if err == orm.ErrNotFound {
+		if err := rbacSvc.RevokeRoleByCode(req.ProjectId, u.Id, model.RoleCode(req.Code)); err != nil {
+			if err == rbac.ErrRoleNotFound {
 				ctx.WriteStatus(404)
 				return
 			}
-			ctx.WriteStatus(500)
-			return
-		}
-		if err := db.Delete(&rbac.UserRole{}, storage.Eq(rbac.UserRole_.ProjectId, req.ProjectId), storage.Eq(rbac.UserRole_.UserId, u.Id), storage.Eq(rbac.UserRole_.RoleId, role.Id)); err != nil {
 			ctx.WriteStatus(500)
 			return
 		}
