@@ -2,10 +2,8 @@
 
 Mismo mecanismo que [`veltylabs/misitio`](https://github.com/veltylabs/misitio/blob/main/docs/DEPLOY.md):
 GitHub Actions corre `goflare build` + `goflare deploy` (Go puro, sin Node ni
-Wrangler — ver `AGENTS.md`). La diferencia con `misitio`: `iam` es un Worker
-API puro, sin `web/public`, así que el deploy nunca toca el protocolo de
-subida de assets — solo sube el script (`edge.js`/`edge.wasm`) y el binding
-D1.
+Wrangler — ver `AGENTS.md`). `iam` es un Worker con panel (assets estáticos +
+`client.wasm` en `web/public`).
 
 ## Las dos clases de variable
 
@@ -103,4 +101,4 @@ actualizado. Si los tests o la migración fallan **no se despliega**.
 | `This Worker does not exist on your account` al atar el dominio | el Worker todavía no se desplegó — el primer `goflare deploy` lo crea y lo ata en el mismo paso; no hay que atar el dominio a mano antes |
 | El despliegue pasa pero `iam` no arranca | faltan una o más de las 4 variables de ejecución (paso 3) |
 | El login falla con `redirect_uri_mismatch` | `GOOGLE_REDIRECT_URL` no coincide con la registrada en Google Cloud Console |
-| Un consumidor recibe 403 en `/api/token` | `client_secret` incorrecto o proyecto no registrado — ver `config.CreateProject` |
+| Un consumidor recibe 403 en `/api/token` | `client_secret` incorrecto, proyecto no registrado o desactivado desde el panel — ver `config.CreateProject` |

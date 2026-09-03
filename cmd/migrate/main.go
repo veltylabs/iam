@@ -37,7 +37,7 @@ func main() {
 	}{
 		{"authority", func() error { return authority.Migrate(conn, compiler) }},
 		{"rbac", func() error { return rbac.Migrate(conn, compiler) }},
-		{"projects", func() error { return config.MigrateProjects(conn, compiler) }},
+		{"projects", func() error { return config.MigrateSchema(conn, compiler) }},
 	}
 	for _, s := range steps {
 		if err := s.run(); err != nil {

@@ -304,10 +304,6 @@ la política viviría en `iam`. `AssignRole` concede un rol en el proyecto del
 
 ## 8. Panel de administración
 
-> STATUS (quitar esta nota cuando el panel esté implementado y publicado):
-> esta sección describe el diseño acordado; el código todavía no existe. La
-> implementación se ejecuta desde un plan (ver skill `agents-workflow`).
-
 `iam` es un **Worker con panel**, no una API pelada: alguien tiene que poder
 registrar un proyecto, emitir su `client_secret`, crear roles y asignar
 usuarios **sin tocar la D1 a mano ni correr un script**. Ese es el panel.

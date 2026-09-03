@@ -10,8 +10,8 @@ import (
 	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
-	"github.com/tinywasm/sqlt"
 	"github.com/tinywasm/server/httpd"
+	"github.com/tinywasm/sqlt"
 	"github.com/tinywasm/storage/mem"
 	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
@@ -41,8 +41,8 @@ func main() {
 		fmt.Println("migrate: rbac:", err)
 		os.Exit(1)
 	}
-	if err := config.MigrateProjects(conn, compiler); err != nil {
-		fmt.Println("migrate: projects:", err)
+	if err := config.MigrateSchema(conn, compiler); err != nil {
+		fmt.Println("migrate: schema:", err)
 		os.Exit(1)
 	}
 
@@ -51,8 +51,17 @@ func main() {
 		fmt.Println("backend:", err)
 		os.Exit(1)
 	}
-	// Local development uses simulated identities with no Google secrets.
-	// Production (edge/main.go) uses only Google OAuth and fails fast without them.
+
+	// En local, la identidad mock (config.LocalScenarios[0]) entra al panel sin
+	// configurar IAM_ADMIN_EMAILS. Sobrescribible con -server_admin_emails.
+	adminEmails := config.PanelAdminList()
+	if len(adminEmails) == 0 {
+		if a := env.Arg("server_admin_emails"); a != "" {
+			adminEmails = []string{a}
+		} else {
+			adminEmails = []string{config.LocalScenarios[0].Email}
+		}
+	}
 
 	port := env.Arg("server_port")
 	if port == "" {
@@ -70,12 +79,12 @@ func main() {
 		NoCache:        true,
 		RoutesEndpoint: true,
 	})
-	routes.Register(srv.Router(), db, backend.Auth, backend.RBAC, backend.JWTSecret)
+	routes.Register(srv.Router(), db, backend.Auth, backend.RBAC, backend.JWTSecret, adminEmails, ids)
+
+	srv.Router().PublicDir("", publicDir)
 
 	if err := srv.ListenAndServe(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
-
-

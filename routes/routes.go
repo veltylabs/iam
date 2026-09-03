@@ -6,16 +6,16 @@ import (
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
 	"github.com/tinywasm/router"
-	"github.com/veltylabs/iam/api"
 	"github.com/veltylabs/iam/config"
+	"github.com/veltylabs/iam/modules/admin"
 )
 
-const PathHealth = api.PathHealth
-const PathHealthDB = api.PathHealthDB
-const PathToken = api.PathToken
-const PathUsersResolve = api.PathUsersResolve
-const PathRolesAssign = api.PathRolesAssign
-const BindingD1 = api.BindingD1
+const PathHealth = config.PathHealth
+const PathHealthDB = config.PathHealthDB
+const PathToken = config.PathToken
+const PathUsersResolve = config.PathUsersResolve
+const PathRolesAssign = config.PathRolesAssign
+const BindingD1 = config.BindingD1
 
 const (
 	bodyHealthOK   = `{"ok":true}`
@@ -41,7 +41,9 @@ const (
 // directamente — el client_secret no puede vivir en un bundle WASM/JS
 // (ver ARCHITECTURE.md §6.4/§7). Sin llamador cross-origin, no hay
 // cabeceras CORS que emitir.
-func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte) {
+// El panel también es server-side (la cookie SSO viaja sola), así que
+// /admin/api/* tampoco lleva CORS.
+func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte, adminEmails []string, ids model.IDGenerator) {
 	modules := []router.APIModule{authMod}
 	for _, m := range modules {
 		m.MountAPI(r)
@@ -55,6 +57,20 @@ func Register(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *r
 	// reachable without a valid client_secret, checked inside the handler.
 	r.Post(PathUsersResolve, ResolveUser(db, authMod)).Public()
 	r.Post(PathRolesAssign, AssignRole(db, rbacSvc)).Public()
+
+	r.Get(config.PathAdminMe, admin.RequirePanelAdmin(authMod, adminEmails, admin.Me(authMod))).Public()
+	r.Get(config.PathAdminProjects, admin.RequirePanelAdmin(authMod, adminEmails, admin.ListProjectsHandler(db))).Public()
+	r.Post(config.PathAdminProjects, admin.RequirePanelAdmin(authMod, adminEmails, admin.CreateProjectHandler(db, ids))).Public()
+	r.Post(config.PathAdminProjectRotate, admin.RequirePanelAdmin(authMod, adminEmails, admin.RotateSecretHandler(db, ids))).Public()
+	r.Post(config.PathAdminProjectActive, admin.RequirePanelAdmin(authMod, adminEmails, admin.SetActiveHandler(db, ids))).Public()
+	r.Get(config.PathAdminRoles, admin.RequirePanelAdmin(authMod, adminEmails, admin.ListRolesHandler(db))).Public()
+	r.Post(config.PathAdminRoles, admin.RequirePanelAdmin(authMod, adminEmails, admin.CreateRoleHandler(db, rbacSvc, ids))).Public()
+	r.Post(config.PathAdminRoleTTL, admin.RequirePanelAdmin(authMod, adminEmails, admin.SetRoleTTLHandler(db, rbacSvc, ids))).Public()
+	r.Post(config.PathAdminRoleDelete, admin.RequirePanelAdmin(authMod, adminEmails, admin.DeleteRoleHandler(db, rbacSvc, ids))).Public()
+	r.Get(config.PathAdminRoleUsers, admin.RequirePanelAdmin(authMod, adminEmails, admin.ListRoleUsersHandler(db, authMod, rbacSvc))).Public()
+	r.Post(config.PathAdminUserAssign, admin.RequirePanelAdmin(authMod, adminEmails, admin.AssignUserHandler(db, authMod, rbacSvc, ids))).Public()
+	r.Post(config.PathAdminUserRevoke, admin.RequirePanelAdmin(authMod, adminEmails, admin.RevokeUserHandler(db, authMod, rbacSvc, ids))).Public()
+	r.Get(config.PathAdminAudit, admin.RequirePanelAdmin(authMod, adminEmails, admin.ListAuditHandler(db))).Public()
 }
 
 // Health responde si este Worker esta vivo y sirviendo. A proposito NO toca la

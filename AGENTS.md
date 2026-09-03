@@ -21,11 +21,10 @@ Diseño: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 `tinywasm/auth` + `tinywasm/rbac` — no reimplementa autenticación ni
 autorización, las ensambla. Su contenido legítimo:
 
-- `config/` — construcción del motor (auth+rbac), pantallas, fábrica de módulos del panel.
-- `routes/` — `func Register(r router.Router, deps …)`.
-- `modules/<módulo>/*.go` (`//go:build wasm`) — módulos del **panel de administración**
-  (ej. `projects`, `roles`, `users`) — el panel existe porque alguien tiene que poder
-  crear un proyecto o dar de alta un rol sin tocar D1 a mano.
+- `config/` — construcción del motor (auth+rbac), DTOs de cable, helpers de dominio. **Hoja: no importa nada de `veltylabs/iam/`.**
+- `routes/` — `func Register(r router.Router, deps …)` en `routes/routes.go` (un solo archivo, una sola tabla).
+- `modules/admin/*.go` — handlers server-side (`backend.go`, `handler.go`), sin subcarpetas.
+- `modules/panel/*.go` (`//go:build wasm`) — frontend del panel de administración (`view.go` contiene todas las funciones `buildXxxView`/`xxxView`; interactividad en archivos por área). `routes/` **nunca** lo importa.
 - `web/client.go` (`//go:build wasm`) — punto de entrada del panel (solo `main`).
 - `web/server.go` (`//go:build !wasm`) — servidor de desarrollo local.
 - `edge/main.go` (`//go:build wasm`) — punto de entrada del Worker.
@@ -142,6 +141,8 @@ tener que introducir el flujo después.
 | [`tinywasm/router`](https://github.com/tinywasm/router) | Contrato de transporte; rutas privadas por defecto. |
 | [`tinywasm/orm`](https://github.com/tinywasm/orm) | Persistencia sobre D1. |
 | [`tinywasm/layout/login`](https://github.com/tinywasm/layout) | Pantalla previa a la sesión. |
+| [`tinywasm/layout/platformd`](https://github.com/tinywasm/layout) | Chasis del panel de administración. |
+| [`tinywasm/form`](https://github.com/tinywasm/form) | Generación y manejo de formularios en el panel. |
 | [`tinywasm/components/actionbutton`](https://github.com/tinywasm/components) | Botones (variantes primary/secondary/danger); gana modo `Href` para el login. |
 | [`tinywasm/json`](https://github.com/tinywasm/json) | Transporte tipado sin reflexión. |
 | [`tinywasm/fmt`](https://github.com/tinywasm/fmt) | Reemplazo de `fmt`/`errors`/`strings`. |

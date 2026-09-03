@@ -81,9 +81,6 @@ en una de estas dos categorías.
 
 ## 2. El acceso al panel se decide por `IAM_ADMIN_EMAILS`, no por RBAC
 
-> STATUS (quitar esta nota cuando el panel esté implementado y publicado):
-> el panel todavía no existe; esta decisión guía su implementación.
-
 **Alternativa descartada:** dar de alta un proyecto `iam` en la propia D1,
 con un rol `iam:admin`, y exigir ese scope para entrar al panel (dogfooding
 del RBAC que el servicio ya expone).
@@ -119,8 +116,6 @@ variable hermana), no metiendo al panel dentro del RBAC que edita.
 ---
 
 ## 3. La corrección la prueban los tests; lo manual es solo la experiencia
-
-> STATUS (quitar esta nota cuando el panel esté implementado y publicado).
 
 **Alternativa descartada:** sembrar en `iam` un proyecto de desarrollo fijo
 (p. ej. `misitio` con un `client_secret` conocido) para que un consumidor

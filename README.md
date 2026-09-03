@@ -38,7 +38,8 @@ r := edge.NewRouter(edge.Config{
 
 `iam` entrega códigos de rol (`Scope`); el proyecto entrega la política.
 `Consumer.AssignRole` concede un rol en el proyecto del `Consumer` y es
-idempotente.
+idempotente. Los proyectos y sus `client_secret` se administran desde el
+panel propio (`/` en `iam.velty.cl`).
 
 ## Documentación
 
@@ -53,6 +54,7 @@ idempotente.
 Motor de identidad+RBAC portado y con `project_id` nativo (Etapas 1-2). API
 Bearer con tokens de autorización por proyecto y cookie SSO entre
 `*.velty.cl` (Etapas 3-4) — todo ejecutado. `veltylabs/misitio` ya consume
-`iam` remotamente (dejó de montar su propio `authority.Module`/`rbac.Service`)
-— primer consumidor real, confirma el contrato de `client/`. Pendiente: un
-panel de administración propio para `iam` — ver `docs/ARCHITECTURE.md` §8.
+`iam` remotamente (dejó de montar su propio `authority.Module`/`rbac.Service`).
+Panel de administración completo (proyectos, lifecycle de `client_secret`,
+roles, usuarios y auditoría), servido por el mismo Worker con acceso controlado
+por `IAM_ADMIN_EMAILS` y transporte REST.

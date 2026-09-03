@@ -6,10 +6,12 @@ import (
 	"github.com/tinywasm/auth/authority"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/rbac"
+	"github.com/tinywasm/router/mock"
 	"github.com/tinywasm/sqlt"
 	"github.com/tinywasm/storage/mem"
 	"github.com/tinywasm/unixid"
 	"github.com/veltylabs/iam/config"
+	"github.com/veltylabs/iam/routes"
 )
 
 func migrateTestDB(t *testing.T, db *orm.DB) {
@@ -22,7 +24,7 @@ func migrateTestDB(t *testing.T, db *orm.DB) {
 	if err := rbac.Migrate(conn, compiler); err != nil {
 		t.Fatal(err)
 	}
-	if err := config.MigrateProjects(conn, compiler); err != nil {
+	if err := config.MigrateSchema(conn, compiler); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -69,6 +71,14 @@ func setupBackend(t *testing.T) *config.Backend {
 		t.Fatalf("NewProductionBackend: %v", err)
 	}
 	return backend
+}
+
+func setupPanel(t *testing.T, adminEmail string) (*config.Backend, *mock.Router) {
+	t.Helper()
+	b := setupBackend(t)
+	r := &mock.Router{}
+	routes.Register(r, b.DB, b.Auth, b.RBAC, b.JWTSecret, []string{adminEmail}, b.IDs)
+	return b, r
 }
 
 // setupLocal arma el motor de desarrollo local, sin variables GOOGLE_*.
