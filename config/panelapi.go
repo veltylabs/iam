@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/tinywasm/model"
+	"webtyp.com/model"
 )
 
 type AdminMeResponse struct {

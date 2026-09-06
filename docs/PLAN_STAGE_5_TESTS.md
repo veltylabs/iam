@@ -5,7 +5,7 @@
 Bajo `tests/`, paquete `tests`, **Go estándar** (no rige la regla TinyGo:
 `testing`, `strings`, `reflect`, `os/exec` permitidos). Calcá
 `tests/token_test.go` y `tests/register_test.go`: handlers manejados directo
-con `github.com/tinywasm/router/mock` (`mock.Router`, `mock.Context` con
+con `github.com/webtyp/router/mock` (`mock.Router`, `mock.Context` con
 `SetUserID`/`InBody`), backend con `setupBackend(t)`.
 
 ## 5.1 — `tests/setup_test.go`

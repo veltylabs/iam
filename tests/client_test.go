@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	tinyjwt "github.com/tinywasm/jwt"
+	tinyjwt "webtyp.com/jwt"
 	"github.com/veltylabs/iam/client"
 )
 

@@ -3,8 +3,8 @@
 package panel
 
 import (
-	"github.com/tinywasm/dom"
-	"github.com/tinywasm/html"
+	"webtyp.com/dom"
+	"webtyp.com/html"
 )
 
 // Cada vista es un componente propio: Render() arma el marcado (contenedores

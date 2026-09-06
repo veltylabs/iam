@@ -53,11 +53,11 @@ func TestEdgeDoesNotImportUIKit(t *testing.T) {
 	sOut := string(out)
 	forbidden := []string{
 		"github.com/veltylabs/iam/modules/panel",
-		"github.com/tinywasm/dom",
-		"github.com/tinywasm/html",
-		"github.com/tinywasm/form",
-		"github.com/tinywasm/layout",
-		"github.com/tinywasm/svg",
+		"webtyp.com/dom",
+		"webtyp.com/html",
+		"webtyp.com/form",
+		"webtyp.com/layout",
+		"webtyp.com/svg",
 	}
 	for _, f := range forbidden {
 		if strings.Contains(sOut, f) {

@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/tinywasm/jwt"
-	"github.com/tinywasm/rbac"
+	"webtyp.com/jwt"
+	"webtyp.com/rbac"
 )
 
 const DefaultAuthTokenTTL = 30 * 60 // 30 minutos — ver ARCHITECTURE.md §6.3

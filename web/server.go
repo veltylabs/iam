@@ -5,12 +5,12 @@ package main
 import (
 	"os"
 
-	"github.com/tinywasm/env"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/orm"
-	"github.com/tinywasm/server/httpd"
-	"github.com/tinywasm/sqlt"
-	"github.com/tinywasm/storage/mem"
+	"webtyp.com/env"
+	"webtyp.com/fmt"
+	"webtyp.com/orm"
+	"webtyp.com/server/httpd"
+	"webtyp.com/sqlt"
+	"webtyp.com/storage/mem"
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/routes"
 )

@@ -3,9 +3,9 @@
 package main
 
 import (
-	"github.com/tinywasm/cloudflare/d1"
-	"github.com/tinywasm/cloudflare/edge"
-	"github.com/tinywasm/fmt"
+	"webtyp.com/cloudflare/d1"
+	"webtyp.com/cloudflare/edge"
+	"webtyp.com/fmt"
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/routes"
 )

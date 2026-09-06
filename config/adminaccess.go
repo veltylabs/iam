@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/tinywasm/env"
-	"github.com/tinywasm/fmt"
+	"webtyp.com/env"
+	"webtyp.com/fmt"
 )
 
 const EnvAdminEmails = "IAM_ADMIN_EMAILS"

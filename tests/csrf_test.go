@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	"github.com/tinywasm/router/mock"
+	"webtyp.com/router/mock"
 	"github.com/veltylabs/iam/config"
 )
 

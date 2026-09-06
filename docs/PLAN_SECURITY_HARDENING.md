@@ -13,7 +13,7 @@ REVIEWER: none
 > Depende además de que estén publicadas las versiones nuevas de
 > `tinywasm/dom`, `tinywasm/auth`, `tinywasm/rbac`, `tinywasm/jwt`,
 > `tinywasm/crypto` y `tinywasm/router` — ver
-> [plan maestro](https://github.com/tinywasm/docs/blob/main/IAM_SECURITY_HARDENING_MASTER_PLAN.md).
+> [plan maestro](https://github.com/webtyp/docs/blob/main/IAM_SECURITY_HARDENING_MASTER_PLAN.md).
 
 # PLAN — `veltylabs/iam`: endurecimiento para producción
 
@@ -27,7 +27,7 @@ Leé antes de escribir código:
 
 - [`AGENTS.md`](../AGENTS.md) — las restricciones de este repo.
 - [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) — el diseño.
-- [CONSTRUCTION_HARNESS.md](https://github.com/tinywasm/app-releases/blob/main/docs/CONSTRUCTION_HARNESS.md)
+- [CONSTRUCTION_HARNESS.md](https://github.com/webtyp/app-releases/blob/main/docs/CONSTRUCTION_HARNESS.md)
   — la doctrina del ecosistema.
 
 Las dos reglas de `AGENTS.md` que más veces se violan en un plan como éste:
@@ -379,7 +379,7 @@ código sigue compilando (los dos son valores `error`) y sólo falla en
 runtime: un 500 donde antes había un 404.
 
 1. `RevokeUserHandler`: **borrá** el `db.Delete(&rbac.UserRole{}, …)` y el
-   import de `github.com/tinywasm/storage`. Usá
+   import de `github.com/webtyp/storage`. Usá
    `rbacSvc.RevokeRoleByCode(req.ProjectId, u.Id, model.RoleCode(req.Code))`.
    Mapeá `rbac.ErrRoleNotFound` → 404.
 2. `AssignUserHandler`: usá `rbacSvc.AssignRoleByCode(...)`, que ya devuelve
@@ -613,10 +613,10 @@ Go estándar y NO están sujetos**: no les "arregles" los imports.
 | Regla | Detalle |
 |---|---|
 | **Sin mapas** | Prohibido `map[K]V`. Slices + búsqueda lineal, o structs de campos fijos. |
-| **Sin stdlib pesada** | Nada de `fmt`, `errors`, `strconv`, `strings`, `log`, `os`, `net/url`. Usa `github.com/tinywasm/fmt`. Variables de entorno: `github.com/tinywasm/env`, nunca `os.Getenv`. |
-| **`context` de tinywasm** | `github.com/tinywasm/context`, no el de la stdlib. |
+| **Sin stdlib pesada** | Nada de `fmt`, `errors`, `strconv`, `strings`, `log`, `os`, `net/url`. Usa `github.com/webtyp/fmt`. Variables de entorno: `github.com/webtyp/env`, nunca `os.Getenv`. |
+| **`context` de tinywasm** | `github.com/webtyp/context`, no el de la stdlib. |
 | **`error` sí, `errors` no** | Devolver `error` está bien; construirlo con `errors.New` no. |
-| **JSON sin reflexión** | `github.com/tinywasm/json`, nunca `encoding/json`. |
+| **JSON sin reflexión** | `github.com/webtyp/json`, nunca `encoding/json`. |
 | **Sin `reflect`** | En ninguna forma, ni transitiva. |
 | **Nunca clases CSS sueltas** | Prohibido `Attr("class", "...")` y `.Class("...")` con clases inventadas. Todo estilo pasa por `tinywasm/widget/style` en un `css.go` con `//go:build !wasm`. **`modules/panel/` viola esto hoy** (`iam-table`, `iam-panel-view`, `iam-secret-box`, `iam-status-banner`, sin ningún `RenderCSS`). Este plan **no** lo arregla — está fuera de su alcance — pero **no agregues clases nuevas**. |
 | **Sin `internal/`** | No crees carpetas `internal/`. |

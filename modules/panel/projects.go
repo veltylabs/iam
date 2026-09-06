@@ -3,14 +3,14 @@
 package panel
 
 import (
-	"github.com/tinywasm/dom"
-	"github.com/tinywasm/fetch"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/form"
-	"github.com/tinywasm/html"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/time"
+	"webtyp.com/dom"
+	"webtyp.com/fetch"
+	"webtyp.com/fmt"
+	"webtyp.com/form"
+	"webtyp.com/html"
+	"webtyp.com/json"
+	"webtyp.com/model"
+	"webtyp.com/time"
 	"github.com/veltylabs/iam/config"
 )
 

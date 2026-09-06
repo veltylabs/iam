@@ -36,7 +36,7 @@ consumidora (ej. `SiteMember` de `misitio`) se queda en esa app.
 
 ## Restricción #2 — el harness: nunca recrear localmente un símbolo que falta
 
-Doctrina completa: [`tinywasm/app/docs/CONSTRUCTION_HARNESS.md`](https://github.com/tinywasm/app/blob/main/docs/CONSTRUCTION_HARNESS.md)
+Doctrina completa: [`tinywasm/app/docs/CONSTRUCTION_HARNESS.md`](https://github.com/webtyp/app/blob/main/docs/CONSTRUCTION_HARNESS.md)
 — aplica a todo el ecosistema.
 
 - **Si una librería no expone lo que este repo necesita, se detiene y se
@@ -139,16 +139,16 @@ exacto del panel — sin ella el Worker no arranca; en local vale
 
 | Librería | Rol |
 |---|---|
-| [`tinywasm/user`](https://github.com/tinywasm/user) | Contrato estable `SubjectID`/`Subject`. |
-| [`tinywasm/auth`](https://github.com/tinywasm/auth) | Autenticación, sesión, OAuth2 Google, escenarios locales. |
-| [`tinywasm/rbac`](https://github.com/tinywasm/rbac) | Roles, permisos, `Can` — con `project_id` nativo desde la Etapa 2. |
-| [`tinywasm/env`](https://github.com/tinywasm/env) | Config/variables de entorno, agnóstico (`Reader`/`Writer` inyectado). |
-| [`tinywasm/goflare`](https://github.com/tinywasm/goflare) | Build y deploy a Cloudflare, runtime `edge`, binding D1. |
-| [`tinywasm/router`](https://github.com/tinywasm/router) | Contrato de transporte; rutas privadas por defecto. |
-| [`tinywasm/orm`](https://github.com/tinywasm/orm) | Persistencia sobre D1. |
-| [`tinywasm/layout/login`](https://github.com/tinywasm/layout) | Pantalla previa a la sesión. |
-| [`tinywasm/layout/platformd`](https://github.com/tinywasm/layout) | Chasis del panel de administración. |
-| [`tinywasm/form`](https://github.com/tinywasm/form) | Generación y manejo de formularios en el panel. |
-| [`tinywasm/components/actionbutton`](https://github.com/tinywasm/components) | Botones (variantes primary/secondary/danger); gana modo `Href` para el login. |
-| [`tinywasm/json`](https://github.com/tinywasm/json) | Transporte tipado sin reflexión. |
-| [`tinywasm/fmt`](https://github.com/tinywasm/fmt) | Reemplazo de `fmt`/`errors`/`strings`. |
+| [`tinywasm/user`](https://github.com/webtyp/user) | Contrato estable `SubjectID`/`Subject`. |
+| [`tinywasm/auth`](https://github.com/webtyp/auth) | Autenticación, sesión, OAuth2 Google, escenarios locales. |
+| [`tinywasm/rbac`](https://github.com/webtyp/rbac) | Roles, permisos, `Can` — con `project_id` nativo desde la Etapa 2. |
+| [`tinywasm/env`](https://github.com/webtyp/env) | Config/variables de entorno, agnóstico (`Reader`/`Writer` inyectado). |
+| [`tinywasm/goflare`](https://github.com/webtyp/goflare) | Build y deploy a Cloudflare, runtime `edge`, binding D1. |
+| [`tinywasm/router`](https://github.com/webtyp/router) | Contrato de transporte; rutas privadas por defecto. |
+| [`tinywasm/orm`](https://github.com/webtyp/orm) | Persistencia sobre D1. |
+| [`tinywasm/layout/login`](https://github.com/webtyp/layout) | Pantalla previa a la sesión. |
+| [`tinywasm/layout/platformd`](https://github.com/webtyp/layout) | Chasis del panel de administración. |
+| [`tinywasm/form`](https://github.com/webtyp/form) | Generación y manejo de formularios en el panel. |
+| [`tinywasm/components/actionbutton`](https://github.com/webtyp/components) | Botones (variantes primary/secondary/danger); gana modo `Href` para el login. |
+| [`tinywasm/json`](https://github.com/webtyp/json) | Transporte tipado sin reflexión. |
+| [`tinywasm/fmt`](https://github.com/webtyp/fmt) | Reemplazo de `fmt`/`errors`/`strings`. |

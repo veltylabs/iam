@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	"github.com/tinywasm/router/mock"
+	"webtyp.com/router/mock"
 )
 
 // forwardOAuthCookies pasa al callback las cookies que /oauth/google emitió:

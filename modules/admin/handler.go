@@ -1,12 +1,12 @@
 package admin
 
 import (
-	"github.com/tinywasm/auth/authority"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/orm"
-	"github.com/tinywasm/rbac"
-	"github.com/tinywasm/router"
+	"webtyp.com/auth/authority"
+	"webtyp.com/fmt"
+	"webtyp.com/model"
+	"webtyp.com/orm"
+	"webtyp.com/rbac"
+	"webtyp.com/router"
 	"github.com/veltylabs/iam/config"
 )
 

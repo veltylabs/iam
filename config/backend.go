@@ -1,12 +1,12 @@
 package config
 
 import (
-	"github.com/tinywasm/auth/authority"
-	"github.com/tinywasm/env"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/orm"
-	"github.com/tinywasm/rbac"
+	"webtyp.com/auth/authority"
+	"webtyp.com/env"
+	"webtyp.com/fmt"
+	"webtyp.com/model"
+	"webtyp.com/orm"
+	"webtyp.com/rbac"
 )
 
 // Backend agrupa los módulos de dominio que comparten la misma base y

@@ -12,11 +12,11 @@
 package client
 
 import (
-	"github.com/tinywasm/fetch"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/json"
-	tinyjwt "github.com/tinywasm/jwt"
-	"github.com/tinywasm/model"
+	"webtyp.com/fetch"
+	"webtyp.com/fmt"
+	"webtyp.com/json"
+	tinyjwt "webtyp.com/jwt"
+	"webtyp.com/model"
 )
 
 // SSOCookieName is the cookie iam sets after a successful login, shared

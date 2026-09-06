@@ -1,6 +1,6 @@
 package client
 
-import "github.com/tinywasm/fetch"
+import "webtyp.com/fetch"
 
 // doSync blocks until req's async Send callback fires, and returns its
 // result directly — router.HandlerFunc has no "respond later" mechanism in

@@ -1,9 +1,9 @@
 package config
 
 import (
-	"github.com/tinywasm/auth/authority"
-	"github.com/tinywasm/ddl"
-	"github.com/tinywasm/rbac"
+	"webtyp.com/auth/authority"
+	"webtyp.com/ddl"
+	"webtyp.com/rbac"
 )
 
 // MigrateAll reconcilia el esquema completo que iam necesita, en orden de

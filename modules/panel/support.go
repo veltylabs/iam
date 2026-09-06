@@ -3,8 +3,8 @@
 package panel
 
 import (
-	"github.com/tinywasm/dom"
-	"github.com/tinywasm/html"
+	"webtyp.com/dom"
+	"webtyp.com/html"
 )
 
 func ShowStatus(msg string) {
