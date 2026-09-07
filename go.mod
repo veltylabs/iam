@@ -3,9 +3,9 @@ module github.com/veltylabs/iam
 go 1.25.2
 
 require (
-	webtyp.com/auth v0.0.32
+	webtyp.com/auth v0.0.33
 	webtyp.com/base64 v0.0.6
-	webtyp.com/cloudflare v0.0.17
+	webtyp.com/cloudflare v0.0.18
 	webtyp.com/components v0.6.16
 	webtyp.com/crypto v0.0.27
 	webtyp.com/ddl v0.0.15
@@ -14,7 +14,7 @@ require (
 	webtyp.com/fetch v0.1.28
 	webtyp.com/fmt v1.0.0
 	webtyp.com/form v0.4.7
-	webtyp.com/goflare v0.5.30
+	webtyp.com/goflare v0.5.31
 	webtyp.com/html v0.0.21
 	webtyp.com/json v0.5.25
 	webtyp.com/jwt v0.1.19
@@ -22,8 +22,8 @@ require (
 	webtyp.com/model v0.1.8
 	webtyp.com/orm v0.12.1
 	webtyp.com/rbac v0.0.12
-	webtyp.com/router v0.1.31
-	webtyp.com/server v0.2.45
+	webtyp.com/router v0.1.34
+	webtyp.com/server v0.2.49
 	webtyp.com/sqlt v0.0.10
 	webtyp.com/storage v0.0.7
 	webtyp.com/svg v0.3.5
@@ -57,13 +57,14 @@ require (
 	webtyp.com/ghaction v0.1.2 // indirect
 	webtyp.com/git v0.0.8 // indirect
 	webtyp.com/gobuild v0.0.28 // indirect
+	webtyp.com/gorun v0.0.25 // indirect
 	webtyp.com/image v0.1.3 // indirect
 	webtyp.com/input v0.0.6 // indirect
 	webtyp.com/js v0.0.10 // indirect
 	webtyp.com/jsvalue v0.1.4 // indirect
 	webtyp.com/keyring v0.2.4 // indirect
 	webtyp.com/modfind v0.0.9 // indirect
-	webtyp.com/sitec v0.2.8 // indirect
+	webtyp.com/sitec v0.2.9 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.5.2 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
