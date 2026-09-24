@@ -3,33 +3,33 @@ module github.com/veltylabs/iam
 go 1.25.2
 
 require (
-	webtyp.com/auth v0.0.33
+	webtyp.com/auth v0.0.56
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.18
 	webtyp.com/components v0.6.16
 	webtyp.com/crypto v0.0.27
-	webtyp.com/ddl v0.0.15
+	webtyp.com/ddl v0.0.17
 	webtyp.com/dom v0.13.10
-	webtyp.com/env v0.0.10
+	webtyp.com/env v0.0.12
 	webtyp.com/fetch v0.1.28
 	webtyp.com/fmt v1.0.0
 	webtyp.com/form v0.4.7
 	webtyp.com/goflare v0.5.31
 	webtyp.com/html v0.0.21
-	webtyp.com/json v0.5.25
-	webtyp.com/jwt v0.1.19
+	webtyp.com/json v0.5.26
+	webtyp.com/jwt v0.1.20
 	webtyp.com/layout v0.2.16
-	webtyp.com/model v0.1.8
-	webtyp.com/orm v0.12.1
+	webtyp.com/model v0.2.0
+	webtyp.com/orm v0.12.4
 	webtyp.com/rbac v0.0.12
-	webtyp.com/router v0.1.34
+	webtyp.com/router v0.1.42
 	webtyp.com/server v0.2.49
 	webtyp.com/sqlt v0.0.10
-	webtyp.com/storage v0.0.7
+	webtyp.com/storage v0.1.0
 	webtyp.com/svg v0.3.5
-	webtyp.com/time v0.5.5
+	webtyp.com/time v0.5.6
 	webtyp.com/unixid v0.2.28
-	webtyp.com/user v0.3.12
+	webtyp.com/user v0.3.13
 )
 
 require (
@@ -45,28 +45,27 @@ require (
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	howett.net/plist v1.0.0 // indirect
-	webtyp.com/await v0.1.1 // indirect
+	webtyp.com/await v0.1.2 // indirect
 	webtyp.com/color v0.1.2 // indirect
 	webtyp.com/command v0.0.3 // indirect
 	webtyp.com/context v0.0.23 // indirect
 	webtyp.com/css v0.4.21 // indirect
 	webtyp.com/date v0.0.6 // indirect
 	webtyp.com/dbus v0.1.1 // indirect
-	webtyp.com/events v0.0.3 // indirect
+	webtyp.com/events v0.0.5 // indirect
 	webtyp.com/font v0.0.5 // indirect
 	webtyp.com/ghaction v0.1.2 // indirect
 	webtyp.com/git v0.0.8 // indirect
 	webtyp.com/gobuild v0.0.28 // indirect
-	webtyp.com/gorun v0.0.25 // indirect
 	webtyp.com/image v0.1.3 // indirect
-	webtyp.com/input v0.0.6 // indirect
+	webtyp.com/input v0.0.9 // indirect
 	webtyp.com/js v0.0.10 // indirect
 	webtyp.com/jsvalue v0.1.4 // indirect
 	webtyp.com/keyring v0.2.4 // indirect
 	webtyp.com/modfind v0.0.9 // indirect
 	webtyp.com/sitec v0.2.9 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
-	webtyp.com/view v0.5.2 // indirect
+	webtyp.com/view v0.6.10 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
 	webtyp.com/widget v0.6.24 // indirect
 )
