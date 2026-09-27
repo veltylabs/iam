@@ -13,12 +13,12 @@ require (
 	webtyp.com/env v0.0.12
 	webtyp.com/fetch v0.1.28
 	webtyp.com/fmt v1.0.0
-	webtyp.com/form v0.4.7
+	webtyp.com/form v0.4.17
 	webtyp.com/goflare v0.5.31
 	webtyp.com/html v0.0.24
 	webtyp.com/json v0.5.26
 	webtyp.com/jwt v0.1.20
-	webtyp.com/layout v0.2.16
+	webtyp.com/layout v0.3.0
 	webtyp.com/model v0.2.0
 	webtyp.com/orm v0.12.4
 	webtyp.com/rbac v0.0.12
