@@ -14,7 +14,7 @@ require (
 	webtyp.com/fetch v0.1.28
 	webtyp.com/fmt v1.0.0
 	webtyp.com/form v0.4.19
-	webtyp.com/goflare v0.5.31
+	webtyp.com/goflare v0.5.34
 	webtyp.com/html v0.0.24
 	webtyp.com/json v0.5.26
 	webtyp.com/jwt v0.1.20
@@ -47,7 +47,7 @@ require (
 	howett.net/plist v1.0.0 // indirect
 	webtyp.com/await v0.1.2 // indirect
 	webtyp.com/color v0.1.2 // indirect
-	webtyp.com/command v0.0.3 // indirect
+	webtyp.com/command v0.0.4 // indirect
 	webtyp.com/context v0.0.23 // indirect
 	webtyp.com/css v0.4.22 // indirect
 	webtyp.com/date v0.0.7 // indirect
@@ -63,7 +63,7 @@ require (
 	webtyp.com/jsvalue v0.1.4 // indirect
 	webtyp.com/keyring v0.2.4 // indirect
 	webtyp.com/modfind v0.0.9 // indirect
-	webtyp.com/sitec v0.2.9 // indirect
+	webtyp.com/sitec v0.2.27 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.10 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
