@@ -5,7 +5,7 @@ go 1.25.2
 require (
 	webtyp.com/auth v0.0.58
 	webtyp.com/base64 v0.0.6
-	webtyp.com/cloudflare v0.0.18
+	webtyp.com/cloudflare v0.0.32
 	webtyp.com/components v0.7.0
 	webtyp.com/crypto v0.0.27
 	webtyp.com/ddl v0.0.17
@@ -60,7 +60,7 @@ require (
 	webtyp.com/image v0.1.3 // indirect
 	webtyp.com/input v0.0.10 // indirect
 	webtyp.com/js v0.0.11 // indirect
-	webtyp.com/jsvalue v0.1.4 // indirect
+	webtyp.com/jsvalue v0.1.6 // indirect
 	webtyp.com/keyring v0.2.4 // indirect
 	webtyp.com/modfind v0.0.9 // indirect
 	webtyp.com/sitec v0.2.32 // indirect
