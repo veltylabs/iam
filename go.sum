@@ -29,8 +29,8 @@ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8
 gopkg.in/yaml.v1 v1.0.0-20140924161607-9f9df34309c0/go.mod h1:WDnlLJ4WF5VGsH/HVa3CI79GS0ol3YnhVnKP89i0kNg=
 howett.net/plist v1.0.0 h1:7CrbWYbPPO/PyNy38b2EB/+gYbjCe2DXBxgtOOZbSQM=
 howett.net/plist v1.0.0/go.mod h1:lqaXoTrLY4hg8tnEzNru53gicrbv7rrk+2xJA/7hw9g=
-webtyp.com/auth v0.0.58 h1:X2iImZwIfxmnQ49wawmtHgAsZwoAQD49be+2TGl2OKk=
-webtyp.com/auth v0.0.58/go.mod h1:u7v1vYlFavXByKL2UoTS8A/Ia9Dj1HzBoN+JOh1ADTA=
+webtyp.com/auth v0.0.60 h1:6DMfRQSJia1TbdK26Iut11vnELc9HaqmoeFNIcBuu2M=
+webtyp.com/auth v0.0.60/go.mod h1:IIeB5/rbMjD2PzYOn3jDrFotNVAMs4yEoZJ1FUOWVo8=
 webtyp.com/await v0.1.2 h1:0rZLLCvu+y/8CJU0YH2ZGi/OLygZwZTBJIrGi0+Z0Fg=
 webtyp.com/await v0.1.2/go.mod h1:SiF0Y5G9XEnN5u6SISxLU4GW/8y9ENR1K3fQF1uHMCQ=
 webtyp.com/base64 v0.0.6 h1:Tkr9Y/s3RLa6yuatk5Tdwdc90NhDP6pNYO1HQG9iIHM=
