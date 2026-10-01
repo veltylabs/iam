@@ -59,11 +59,11 @@ require (
 	webtyp.com/gobuild v0.0.28 // indirect
 	webtyp.com/image v0.1.11 // indirect
 	webtyp.com/input v0.0.10 // indirect
-	webtyp.com/js v0.0.11 // indirect
+	webtyp.com/js v0.1.0 // indirect
 	webtyp.com/jsvalue v0.1.6 // indirect
 	webtyp.com/keyring v0.2.4 // indirect
 	webtyp.com/modfind v0.0.9 // indirect
-	webtyp.com/sitec v0.2.32 // indirect
+	webtyp.com/sitec v0.2.36 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.10 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
