@@ -45,6 +45,7 @@ require (
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	howett.net/plist v1.0.0 // indirect
+	webtyp.com/artifacts v0.1.1 // indirect
 	webtyp.com/await v0.1.2 // indirect
 	webtyp.com/color v0.1.2 // indirect
 	webtyp.com/command v0.0.4 // indirect
@@ -52,7 +53,9 @@ require (
 	webtyp.com/css v0.4.22 // indirect
 	webtyp.com/date v0.0.7 // indirect
 	webtyp.com/dbus v0.1.1 // indirect
+	webtyp.com/device v0.1.0 // indirect
 	webtyp.com/events v0.0.5 // indirect
+	webtyp.com/files v0.0.4 // indirect
 	webtyp.com/font v0.0.5 // indirect
 	webtyp.com/ghaction v0.1.2 // indirect
 	webtyp.com/git v0.0.8 // indirect
@@ -64,7 +67,7 @@ require (
 	webtyp.com/keyring v0.2.4 // indirect
 	webtyp.com/modfind v0.0.9 // indirect
 	webtyp.com/pwa v0.1.1 // indirect
-	webtyp.com/sitec v0.2.40 // indirect
+	webtyp.com/sitec v0.2.41 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.10 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
