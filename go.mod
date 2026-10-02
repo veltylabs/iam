@@ -14,7 +14,7 @@ require (
 	webtyp.com/fetch v0.1.28
 	webtyp.com/fmt v1.0.0
 	webtyp.com/form v0.4.19
-	webtyp.com/goflare v0.5.34
+	webtyp.com/goflare v0.5.35
 	webtyp.com/html v0.0.24
 	webtyp.com/json v0.5.27
 	webtyp.com/jwt v0.1.20
