@@ -6,7 +6,7 @@ require (
 	webtyp.com/auth v0.0.60
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.32
-	webtyp.com/components v0.7.6
+	webtyp.com/components v0.7.7
 	webtyp.com/crypto v0.0.27
 	webtyp.com/ddl v0.0.17
 	webtyp.com/dom v0.13.17
@@ -50,7 +50,7 @@ require (
 	webtyp.com/color v0.1.2 // indirect
 	webtyp.com/command v0.0.4 // indirect
 	webtyp.com/context v0.0.23 // indirect
-	webtyp.com/css v0.4.22 // indirect
+	webtyp.com/css v0.4.24 // indirect
 	webtyp.com/date v0.0.7 // indirect
 	webtyp.com/dbus v0.1.1 // indirect
 	webtyp.com/device v0.1.0 // indirect
