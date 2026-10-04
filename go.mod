@@ -9,7 +9,7 @@ require (
 	webtyp.com/components v0.8.0
 	webtyp.com/crypto v0.0.27
 	webtyp.com/ddl v0.0.17
-	webtyp.com/dom v0.13.17
+	webtyp.com/dom v0.13.18
 	webtyp.com/env v0.0.12
 	webtyp.com/fetch v0.1.28
 	webtyp.com/fmt v1.0.0
