@@ -50,7 +50,7 @@ require (
 	webtyp.com/color v0.1.2 // indirect
 	webtyp.com/command v0.0.4 // indirect
 	webtyp.com/context v0.0.23 // indirect
-	webtyp.com/css v0.4.24 // indirect
+	webtyp.com/css v0.4.25 // indirect
 	webtyp.com/date v0.0.7 // indirect
 	webtyp.com/dbus v0.1.1 // indirect
 	webtyp.com/device v0.1.0 // indirect
