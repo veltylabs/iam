@@ -71,5 +71,5 @@ require (
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.10 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
-	webtyp.com/widget v0.6.32 // indirect
+	webtyp.com/widget v0.6.34 // indirect
 )
