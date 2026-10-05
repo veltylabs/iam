@@ -6,7 +6,7 @@ require (
 	webtyp.com/auth v0.0.60
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.32
-	webtyp.com/components v0.8.0
+	webtyp.com/components v0.8.6
 	webtyp.com/crypto v0.0.27
 	webtyp.com/ddl v0.0.17
 	webtyp.com/dom v0.13.18
