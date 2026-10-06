@@ -65,7 +65,7 @@ require (
 	webtyp.com/js v0.1.1 // indirect
 	webtyp.com/jsvalue v0.1.6 // indirect
 	webtyp.com/keyring v0.2.4 // indirect
-	webtyp.com/modfind v0.0.9 // indirect
+	webtyp.com/modfind v0.0.10 // indirect
 	webtyp.com/pwa v0.1.1 // indirect
 	webtyp.com/sitec v0.2.44 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
