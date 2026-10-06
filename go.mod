@@ -70,7 +70,7 @@ require (
 	webtyp.com/lang v0.1.0 // indirect
 	webtyp.com/modfind v0.0.10 // indirect
 	webtyp.com/pwa v0.1.1 // indirect
-	webtyp.com/sitec v0.2.46 // indirect
+	webtyp.com/sitec v0.2.47 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.22 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
