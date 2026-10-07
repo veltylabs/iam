@@ -72,7 +72,7 @@ require (
 	webtyp.com/pwa v0.1.1 // indirect
 	webtyp.com/sitec v0.2.50 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
-	webtyp.com/view v0.6.22 // indirect
+	webtyp.com/view v0.6.27 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
 	webtyp.com/widget v0.6.36 // indirect
 )
