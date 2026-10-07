@@ -63,7 +63,7 @@ require (
 	webtyp.com/git v0.0.8 // indirect
 	webtyp.com/gobuild v0.0.28 // indirect
 	webtyp.com/image v0.1.16 // indirect
-	webtyp.com/input v0.0.13 // indirect
+	webtyp.com/input v0.0.17 // indirect
 	webtyp.com/js v0.1.1 // indirect
 	webtyp.com/jsvalue v0.1.6 // indirect
 	webtyp.com/keyring v0.2.4 // indirect
