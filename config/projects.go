@@ -12,8 +12,22 @@ import (
 	"webtyp.com/time"
 )
 
-// ErrProjectNotFound reports that a project id has no matching row.
-var ErrProjectNotFound = fmt.Err("project", "not", "found")
+// projectNotFound is the concrete type of ErrProjectNotFound. IsProjectNotFound
+// recognises it with a type assertion: under TinyGo, == between two error
+// values goes through runtime.interfaceEqual and pulls reflection into wasm.
+type projectNotFound struct{}
+
+func (projectNotFound) Error() string { return "project not found" }
+
+// ErrProjectNotFound reports that a project id has no matching row. Detect it
+// with IsProjectNotFound, never with ==.
+var ErrProjectNotFound error = projectNotFound{}
+
+// IsProjectNotFound reports whether err is ErrProjectNotFound.
+func IsProjectNotFound(err error) bool {
+	_, ok := err.(projectNotFound)
+	return ok
+}
 
 // ErrMissingJWTSecret: sin JWT_SECRET no hay clave con la que derivar el
 // hash de un client_secret. HMAC sobre una clave vacía es matemática válida:

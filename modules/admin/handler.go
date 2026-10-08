@@ -118,7 +118,7 @@ func RotateSecretHandler(db *orm.DB, ids model.IDGenerator) func(ctx router.Cont
 			return
 		}
 		if err := config.RegenerateProjectSecret(db, req.ProjectId, secret); err != nil {
-			if err == config.ErrProjectNotFound {
+			if config.IsProjectNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}
@@ -145,7 +145,7 @@ func SetActiveHandler(db *orm.DB, ids model.IDGenerator) func(ctx router.Context
 			return
 		}
 		if err := config.SetProjectActive(db, req.ProjectId, req.Active); err != nil {
-			if err == config.ErrProjectNotFound {
+			if config.IsProjectNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}
@@ -192,7 +192,7 @@ func CreateRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 		}
 		roleID := ids.NewID()
 		if err := rbacSvc.CreateRole(req.ProjectId, roleID, model.RoleCode(req.Code), req.Name, req.Description); err != nil {
-			if err == rbac.ErrDuplicateRoleCode {
+			if rbac.IsDuplicateRoleCode(err) {
 				ctx.WriteStatus(409)
 				return
 			}
@@ -218,7 +218,7 @@ func SetRoleTTLHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 		}
 		role, err := rbacSvc.GetRoleByCode(req.ProjectId, model.RoleCode(req.Code))
 		if err != nil {
-			if err == rbac.ErrRoleNotFound {
+			if rbac.IsRoleNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}
@@ -248,7 +248,7 @@ func DeleteRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 			return
 		}
 		if err := rbacSvc.DeleteRoleByCode(req.ProjectId, model.RoleCode(req.Code)); err != nil {
-			if err == rbac.ErrRoleNotFound {
+			if rbac.IsRoleNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}
@@ -279,7 +279,7 @@ func ListRoleUsersHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.S
 		}
 		users, err := ListRoleUsers(db, authMod, rbacSvc, projectID, code)
 		if err != nil {
-			if err == rbac.ErrRoleNotFound {
+			if rbac.IsRoleNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}
@@ -308,7 +308,7 @@ func AssignUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Serv
 			}
 		}
 		if err := rbacSvc.AssignRoleByCode(req.ProjectId, u.Id, model.RoleCode(req.Code)); err != nil {
-			if err == rbac.ErrRoleNotFound {
+			if rbac.IsRoleNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}
@@ -338,7 +338,7 @@ func RevokeUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Serv
 			return
 		}
 		if err := rbacSvc.RevokeRoleByCode(req.ProjectId, u.Id, model.RoleCode(req.Code)); err != nil {
-			if err == rbac.ErrRoleNotFound {
+			if rbac.IsRoleNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}

@@ -310,7 +310,7 @@ func AssignRole(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
 			return
 		}
 		if err := rbacSvc.AssignRoleByCode(body.ProjectID, body.UserID, model.RoleCode(body.RoleCode)); err != nil {
-			if err == rbac.ErrRoleNotFound {
+			if rbac.IsRoleNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}
