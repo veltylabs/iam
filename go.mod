@@ -29,7 +29,7 @@ require (
 	webtyp.com/svg v0.3.14
 	webtyp.com/time v0.5.7
 	webtyp.com/unixid v0.2.28
-	webtyp.com/user v0.3.13
+	webtyp.com/user v0.3.14
 )
 
 require (
