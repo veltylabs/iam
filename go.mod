@@ -24,7 +24,7 @@ require (
 	webtyp.com/rbac v0.0.15
 	webtyp.com/router v0.3.2
 	webtyp.com/server v0.2.77
-	webtyp.com/sqlt v0.0.10
+	webtyp.com/sqlt v0.0.11
 	webtyp.com/storage v0.1.3
 	webtyp.com/svg v0.3.14
 	webtyp.com/time v0.5.7
