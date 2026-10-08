@@ -1,16 +1,16 @@
 package config
 
 import (
-	"github.com/tinywasm/auth"
-	"github.com/tinywasm/auth/authority"
-	"github.com/tinywasm/auth/oauth2"
-	"github.com/tinywasm/auth/oauth2/provider/google"
-	sessionjwt "github.com/tinywasm/auth/session/jwt"
-	"github.com/tinywasm/env"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/orm"
-	"github.com/tinywasm/rbac"
+	"webtyp.com/auth"
+	"webtyp.com/auth/authority"
+	"webtyp.com/auth/oauth2"
+	"webtyp.com/auth/oauth2/provider/google"
+	sessionjwt "webtyp.com/auth/session/jwt"
+	"webtyp.com/env"
+	"webtyp.com/fmt"
+	"webtyp.com/model"
+	"webtyp.com/orm"
+	"webtyp.com/rbac"
 )
 
 const (

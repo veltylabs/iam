@@ -1,7 +1,7 @@
 package panel
 
 import (
-	"github.com/tinywasm/svg"
+	"webtyp.com/svg"
 )
 
 const (

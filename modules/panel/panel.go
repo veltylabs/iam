@@ -3,8 +3,8 @@
 package panel
 
 import (
-	"github.com/tinywasm/dom"
-	"github.com/tinywasm/layout/platformd"
+	"webtyp.com/dom"
+	"webtyp.com/layout/platformd"
 	"github.com/veltylabs/iam/config"
 )
 

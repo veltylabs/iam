@@ -3,9 +3,9 @@
 package config
 
 import (
-	"github.com/tinywasm/env"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/orm"
+	"webtyp.com/env"
+	"webtyp.com/model"
+	"webtyp.com/orm"
 )
 
 // LocalJWTSecret es el secreto HS256 fijo de desarrollo/tests, donde no

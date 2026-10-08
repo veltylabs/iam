@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/tinywasm/env"
+	"webtyp.com/env"
 	"github.com/veltylabs/iam/config"
 )
 

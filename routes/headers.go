@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"github.com/tinywasm/router"
+	"webtyp.com/router"
 )
 
 // Cabeceras de seguridad emitidas en TODAS las respuestas de iam. Los valores

@@ -230,7 +230,7 @@ Archivo nuevo **`tests/consumer_test.go`**:
 | `TestAssignRoleIsIdempotent` | asignar dos veces el mismo rol no es un error |
 | `TestAssignRoleIsScopedToTheProject` | la petición que sale lleva el `project_id` del `Consumer`, y no hay forma de pasar otro |
 
-Usa `github.com/tinywasm/router/mock` para los contextos: probar un
+Usa `github.com/webtyp/router/mock` para los contextos: probar un
 `router.Middleware` sin router prueba la función, no el middleware.
 
 ## Etapa 5 — Limpieza de planes huérfanos
@@ -281,7 +281,7 @@ borrarlos, no se pierde con ellos.
 - [ ] `gotest ./...` en verde.
 - [ ] `grep -rn "map\[" client/` → vacío.
 - [ ] `grep -rn "\"strings\"\|\"strconv\"\|\"errors\"\|\"reflect\"" client/` →
-      vacío; el único `fmt` es `github.com/tinywasm/fmt`.
+      vacío; el único `fmt` es `github.com/webtyp/fmt`.
 - [ ] `grep -rn "orm\.\|rbac\." client/` → vacío: el consumidor sigue sin
       arrastrar la maquinaria de iam.
 - [ ] `ls docs/PLAN_STAGE_*.md` → no existe ninguno.
@@ -444,5 +444,5 @@ func (c *AuthzCache) Scope(userID string) ([]string, bool) {
 func nowUnix() int64 { return time.Now() / 1e9 }
 ```
 
-`time` es `github.com/tinywasm/time`, **no** la stdlib: `time.Now()` devuelve
+`time` es `github.com/webtyp/time`, **no** la stdlib: `time.Now()` devuelve
 nanosegundos como `int64`, de ahí el `/ 1e9`.

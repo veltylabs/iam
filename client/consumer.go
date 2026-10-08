@@ -1,12 +1,12 @@
 package client
 
 import (
-	"github.com/tinywasm/env"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/fetch"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/router"
+	"webtyp.com/env"
+	"webtyp.com/fmt"
+	"webtyp.com/json"
+	"webtyp.com/fetch"
+	"webtyp.com/model"
+	"webtyp.com/router"
 )
 
 // Nombres convencionales de las variables de entorno. Están aquí para que

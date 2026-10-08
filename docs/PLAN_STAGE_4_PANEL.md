@@ -117,12 +117,12 @@ func projectsView() dom.Component {
   detalle.
 
 Skin global de formularios: en `web/client.go`, import en blanco
-`_ "github.com/tinywasm/components/fieldset"`. **Nada de `RootCSS()`** en
+`_ "github.com/webtyp/components/fieldset"`. **Nada de `RootCSS()`** en
 `modules/panel/`.
 
 ## 4.4 — `panel.go`
 
-Calcá `github.com/tinywasm/layout/platformd/web/client.go`.
+Calcá `github.com/webtyp/layout/platformd/web/client.go`.
 
 ```go
 func Boot(me config.AdminMeResponse) {
@@ -160,9 +160,9 @@ Calcá `misitio/web/client.go`.
 package main
 
 import (
-	_ "github.com/tinywasm/components/fieldset"
-	"github.com/tinywasm/fetch"
-	"github.com/tinywasm/json"
+	_ "github.com/webtyp/components/fieldset"
+	"github.com/webtyp/fetch"
+	"github.com/webtyp/json"
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/modules/panel"
 )

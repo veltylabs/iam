@@ -1,12 +1,12 @@
 package routes
 
 import (
-	"github.com/tinywasm/auth/authority"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/orm"
-	"github.com/tinywasm/rbac"
-	"github.com/tinywasm/router"
+	"webtyp.com/auth/authority"
+	"webtyp.com/fmt"
+	"webtyp.com/model"
+	"webtyp.com/orm"
+	"webtyp.com/rbac"
+	"webtyp.com/router"
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/modules/admin"
 )
@@ -310,7 +310,7 @@ func AssignRole(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
 			return
 		}
 		if err := rbacSvc.AssignRoleByCode(body.ProjectID, body.UserID, model.RoleCode(body.RoleCode)); err != nil {
-			if err == rbac.ErrRoleNotFound {
+			if rbac.IsRoleNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}

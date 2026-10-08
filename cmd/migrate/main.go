@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tinywasm/auth/authority"
-	"github.com/tinywasm/goflare"
-	"github.com/tinywasm/rbac"
-	"github.com/tinywasm/sqlt"
+	"webtyp.com/auth/authority"
+	"webtyp.com/goflare"
+	"webtyp.com/rbac"
+	"webtyp.com/sqlt"
 	"github.com/veltylabs/iam/config"
 )
 

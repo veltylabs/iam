@@ -3,15 +3,15 @@
 package config
 
 import (
-	"github.com/tinywasm/auth"
-	"github.com/tinywasm/auth/authority"
-	"github.com/tinywasm/auth/local"
-	"github.com/tinywasm/auth/oauth2"
-	googlemock "github.com/tinywasm/auth/oauth2/provider/google/mock"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/orm"
-	"github.com/tinywasm/rbac"
-	"github.com/tinywasm/user"
+	"webtyp.com/auth"
+	"webtyp.com/auth/authority"
+	"webtyp.com/auth/local"
+	"webtyp.com/auth/oauth2"
+	googlemock "webtyp.com/auth/oauth2/provider/google/mock"
+	"webtyp.com/model"
+	"webtyp.com/orm"
+	"webtyp.com/rbac"
+	"webtyp.com/user"
 )
 
 // LocalScenarios son identidades de desarrollo determinísticas para probar

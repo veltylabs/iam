@@ -3,10 +3,10 @@
 package main
 
 import (
-	_ "github.com/tinywasm/components/fieldset"
-	"github.com/tinywasm/dom"
-	"github.com/tinywasm/fetch"
-	"github.com/tinywasm/json"
+	_ "webtyp.com/components/fieldset"
+	"webtyp.com/dom"
+	"webtyp.com/fetch"
+	"webtyp.com/json"
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/modules/panel"
 )

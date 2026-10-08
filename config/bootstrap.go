@@ -1,10 +1,10 @@
 package config
 
 import (
-	"github.com/tinywasm/auth/authority"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/rbac"
+	"webtyp.com/auth/authority"
+	"webtyp.com/fmt"
+	"webtyp.com/model"
+	"webtyp.com/rbac"
 )
 
 // EnsureRole crea el rol (si no existe) y lo asigna de forma idempotente a

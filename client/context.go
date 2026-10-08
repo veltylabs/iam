@@ -1,9 +1,9 @@
 package client
 
 import (
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/router"
-	tinyjwt "github.com/tinywasm/jwt"
+	"webtyp.com/fmt"
+	"webtyp.com/router"
+	tinyjwt "webtyp.com/jwt"
 )
 
 // La Identity viaja como ocho claves escalares y no como un blob porque

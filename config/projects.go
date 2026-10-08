@@ -1,19 +1,33 @@
 package config
 
 import (
-	"github.com/tinywasm/base64"
-	"github.com/tinywasm/crypto/hmac"
-	"github.com/tinywasm/crypto/rand"
-	"github.com/tinywasm/ddl"
-	"github.com/tinywasm/env"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/orm"
-	"github.com/tinywasm/storage"
-	"github.com/tinywasm/time"
+	"webtyp.com/base64"
+	"webtyp.com/crypto/hmac"
+	"webtyp.com/crypto/rand"
+	"webtyp.com/ddl"
+	"webtyp.com/env"
+	"webtyp.com/fmt"
+	"webtyp.com/orm"
+	"webtyp.com/storage"
+	"webtyp.com/time"
 )
 
-// ErrProjectNotFound reports that a project id has no matching row.
-var ErrProjectNotFound = fmt.Err("project", "not", "found")
+// projectNotFound is the concrete type of ErrProjectNotFound. IsProjectNotFound
+// recognises it with a type assertion: under TinyGo, == between two error
+// values goes through runtime.interfaceEqual and pulls reflection into wasm.
+type projectNotFound struct{}
+
+func (projectNotFound) Error() string { return "project not found" }
+
+// ErrProjectNotFound reports that a project id has no matching row. Detect it
+// with IsProjectNotFound, never with ==.
+var ErrProjectNotFound error = projectNotFound{}
+
+// IsProjectNotFound reports whether err is ErrProjectNotFound.
+func IsProjectNotFound(err error) bool {
+	_, ok := err.(projectNotFound)
+	return ok
+}
 
 // ErrMissingJWTSecret: sin JWT_SECRET no hay clave con la que derivar el
 // hash de un client_secret. HMAC sobre una clave vacía es matemática válida:

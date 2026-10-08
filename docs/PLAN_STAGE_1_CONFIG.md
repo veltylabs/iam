@@ -135,7 +135,7 @@ const clientSecretPrefix = "iam_sk_"
 
 // GenerateClientSecret: 30 bytes del CSPRNG del ecosistema en base64 url-safe,
 // prefijo reconocible. NUNCA math/rand ni derivado del tiempo.
-func GenerateClientSecret() (string, error) // github.com/tinywasm/crypto/rand — Read([]byte) error
+func GenerateClientSecret() (string, error) // github.com/webtyp/crypto/rand — Read([]byte) error
 
 // RegenerateProjectSecret: nuevo hash; el secreto anterior deja de validar de
 // inmediato. ErrProjectNotFound si no existe.

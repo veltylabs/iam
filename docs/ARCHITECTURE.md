@@ -18,7 +18,7 @@ Evidencia concreta, verificada en código el 2026-08-24:
   in-process contra la D1 `velty-misitio-db` (ver
   [`edge/main.go`](https://github.com/veltylabs/misitio/blob/main/edge/main.go)).
 - `veltylabs/mjosefa-cms` monta su propio auth contra postgres, con
-  `github.com/tinywasm/user v0.0.38` — anterior al split de `auth`/`rbac`
+  `github.com/webtyp/user v0.0.38` — anterior al split de `auth`/`rbac`
   (`user` va hoy en `v0.3.11`). Cada app que se suma reimplementa el mismo
   cableado y diverge en versión.
 

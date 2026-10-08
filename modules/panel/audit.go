@@ -3,10 +3,10 @@
 package panel
 
 import (
-	"github.com/tinywasm/dom"
-	"github.com/tinywasm/fetch"
-	"github.com/tinywasm/html"
-	"github.com/tinywasm/json"
+	"webtyp.com/dom"
+	"webtyp.com/fetch"
+	"webtyp.com/html"
+	"webtyp.com/json"
 	"github.com/veltylabs/iam/config"
 )
 

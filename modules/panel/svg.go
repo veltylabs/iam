@@ -3,7 +3,7 @@
 package panel
 
 import (
-	"github.com/tinywasm/svg/sprite"
+	"webtyp.com/svg/sprite"
 )
 
 var PanelSprite = sprite.NewSprite(

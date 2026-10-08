@@ -3,8 +3,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/router/mock"
+	"webtyp.com/json"
+	"webtyp.com/router/mock"
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/routes"
 )

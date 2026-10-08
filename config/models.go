@@ -1,6 +1,6 @@
 package config
 
-import "github.com/tinywasm/model"
+import "webtyp.com/model"
 
 // Project is iam's own concept, not rbac's: rbac knows roles/permissions
 // scoped by project_id, but has no notion of an application authenticating

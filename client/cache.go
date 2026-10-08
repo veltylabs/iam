@@ -3,7 +3,7 @@ package client
 import (
 	"sync"
 
-	"github.com/tinywasm/time"
+	"webtyp.com/time"
 )
 
 type authzEntry struct {

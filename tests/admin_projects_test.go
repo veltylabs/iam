@@ -3,10 +3,10 @@ package tests
 import (
 	"testing"
 
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/router/mock"
-	"github.com/tinywasm/sqlt"
+	"webtyp.com/json"
+	"webtyp.com/model"
+	"webtyp.com/router/mock"
+	"webtyp.com/sqlt"
 
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/modules/admin"
