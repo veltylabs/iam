@@ -13,7 +13,7 @@ require (
 	webtyp.com/env v0.0.12
 	webtyp.com/fetch v0.1.29
 	webtyp.com/fmt v1.0.0
-	webtyp.com/form v0.4.24
+	webtyp.com/form v0.4.30
 	webtyp.com/goflare v0.5.35
 	webtyp.com/html v0.0.24
 	webtyp.com/json v0.5.29
@@ -74,5 +74,5 @@ require (
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.27 // indirect
 	webtyp.com/webauthn v0.1.3 // indirect
-	webtyp.com/widget v0.6.36 // indirect
+	webtyp.com/widget v0.6.37 // indirect
 )
