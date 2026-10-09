@@ -28,7 +28,7 @@ require (
 	webtyp.com/storage v0.1.3
 	webtyp.com/svg v0.3.14
 	webtyp.com/time v0.5.7
-	webtyp.com/unixid v0.2.28
+	webtyp.com/unixid v0.3.0
 	webtyp.com/user v0.3.14
 )
 
