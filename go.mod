@@ -8,13 +8,14 @@ require (
 	webtyp.com/cloudflare v0.0.33
 	webtyp.com/crypto v0.0.27
 	webtyp.com/ddl v0.0.22
-	webtyp.com/dom v0.13.24
+	webtyp.com/dom v0.13.25
 	webtyp.com/env v0.0.13
 	webtyp.com/fetch v0.1.29
 	webtyp.com/fmt v1.0.0
 	webtyp.com/form v0.4.34
 	webtyp.com/goflare v0.5.36
 	webtyp.com/html v0.0.27
+	webtyp.com/image v0.1.19
 	webtyp.com/json v0.5.29
 	webtyp.com/jwt v0.1.23
 	webtyp.com/layout v0.3.41
@@ -62,7 +63,6 @@ require (
 	webtyp.com/ghaction v0.1.2 // indirect
 	webtyp.com/git v0.0.9 // indirect
 	webtyp.com/gobuild v0.0.28 // indirect
-	webtyp.com/image v0.1.19 // indirect
 	webtyp.com/input v0.0.18 // indirect
 	webtyp.com/js v0.1.2 // indirect
 	webtyp.com/jsvalue v0.1.7 // indirect
