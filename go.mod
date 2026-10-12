@@ -3,7 +3,7 @@ module github.com/veltylabs/iam
 go 1.26.8
 
 require (
-	webtyp.com/auth v0.0.70
+	webtyp.com/auth v0.0.72
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.33
 	webtyp.com/crypto v0.0.27
