@@ -8,7 +8,7 @@ require (
 	webtyp.com/cloudflare v0.0.33
 	webtyp.com/crypto v0.0.28
 	webtyp.com/ddl v0.0.22
-	webtyp.com/dom v0.13.25
+	webtyp.com/dom v0.13.26
 	webtyp.com/env v0.0.13
 	webtyp.com/fetch v0.1.29
 	webtyp.com/fmt v1.0.0
