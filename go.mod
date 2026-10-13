@@ -74,6 +74,6 @@ require (
 	webtyp.com/sitec v0.2.57 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.32 // indirect
-	webtyp.com/webauthn v0.1.4 // indirect
+	webtyp.com/webauthn v0.1.5 // indirect
 	webtyp.com/widget v0.6.40 // indirect
 )
