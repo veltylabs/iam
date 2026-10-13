@@ -16,7 +16,7 @@ require (
 	webtyp.com/goflare v0.5.36
 	webtyp.com/html v0.0.27
 	webtyp.com/image v0.1.19
-	webtyp.com/json v0.5.29
+	webtyp.com/json v0.5.30
 	webtyp.com/jwt v0.1.24
 	webtyp.com/layout v0.3.45
 	webtyp.com/model v0.2.3
@@ -74,6 +74,6 @@ require (
 	webtyp.com/sitec v0.2.57 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.32 // indirect
-	webtyp.com/webauthn v0.1.5 // indirect
+	webtyp.com/webauthn v0.1.6 // indirect
 	webtyp.com/widget v0.6.40 // indirect
 )
