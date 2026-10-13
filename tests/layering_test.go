@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package tests
 
 import (
@@ -37,9 +39,9 @@ func TestNoApiPackage(t *testing.T) {
 }
 
 func TestRoutesDoesNotImportPanel(t *testing.T) {
-	out := runCmd(t, "go", "list", "-deps", "../routes")
+	out := runCmd(t, "go", "list", "-deps", "../config")
 	if strings.Contains(out, "github.com/veltylabs/iam/modules/panel") {
-		t.Fatalf("routes/ transitively imports modules/panel")
+		t.Fatalf("config/ transitively imports modules/panel")
 	}
 }
 
@@ -100,20 +102,11 @@ func TestClientDoesNotImportRoutes(t *testing.T) {
 }
 
 func TestRouteTableIsSingleFile(t *testing.T) {
-	entries, err := os.ReadDir("../routes")
-	if err != nil {
-		t.Fatalf("ReadDir routes: %v", err)
+	if _, err := os.Stat("../routes"); !os.IsNotExist(err) {
+		t.Fatalf("routes/ directory must not exist in canonical project layout (eliminated in favor of config/routes.go)")
 	}
-	// La tabla de rutas sigue siendo un solo archivo (routes.go); headers.go
-	// es el middleware de cabeceras de seguridad, no una tabla de rutas.
-	allowed := map[string]bool{"routes.go": true, "headers.go": true}
-	for _, e := range entries {
-		if !allowed[e.Name()] {
-			t.Fatalf("routes/ directory contains unexpected file %s (want only routes.go and headers.go)", e.Name())
-		}
-	}
-	if len(entries) != len(allowed) {
-		t.Fatalf("routes/ directory is missing an expected file: got %d entries, want %d", len(entries), len(allowed))
+	if _, err := os.Stat("../config/routes.go"); err != nil {
+		t.Fatalf("config/routes.go must exist as canonical route table: %v", err)
 	}
 }
 

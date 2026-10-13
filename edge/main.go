@@ -7,11 +7,10 @@ import (
 	"webtyp.com/cloudflare/edge"
 	"webtyp.com/fmt"
 	"github.com/veltylabs/iam/config"
-	"github.com/veltylabs/iam/routes"
 )
 
 func main() {
-	db, err := d1.NewEdge(routes.BindingD1)
+	db, err := d1.NewEdge(config.BindingD1)
 	if err != nil {
 		fmt.Println("d1:", err)
 		return
@@ -32,6 +31,6 @@ func main() {
 	r := edge.NewRouter(edge.Config{
 		Authn: backend.Auth.Authenticate(),
 	})
-	routes.Register(r, db, backend.Auth, backend.RBAC, backend.JWTSecret, config.PanelAdminList(), ids, backend.PanelOrigin)
+	config.RegisterRoutes(r, db, backend.Auth, backend.RBAC, backend.JWTSecret, config.PanelAdminList(), ids, backend.PanelOrigin)
 	edge.Serve(r)
 }

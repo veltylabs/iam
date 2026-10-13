@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package tests
 
 import (
@@ -9,7 +11,6 @@ import (
 
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/modules/admin"
-	"github.com/veltylabs/iam/routes"
 )
 
 // TestHostileConsumerCannotInjectIntoPanel reproduce la cadena de ataque
@@ -45,10 +46,10 @@ func TestHostileConsumerCannotInjectIntoPanel(t *testing.T) {
 
 	// 2. Consumidor legítimo, secreto válido, datos hostiles.
 	const hostileName = `<img src=x onerror=alert(1)>`
-	resolveHandler := routes.ResolveUser(b.DB, b.Auth)
+	resolveHandler := config.ResolveUser(b.DB, b.Auth)
 	resolveCtx := &mock.Context{InMethod: "POST", InPath: config.PathUsersResolve}
 	var resolveBody []byte
-	if err := json.Encode(&routes.ResolveUserRequest{
+	if err := json.Encode(&config.ResolveUserRequest{
 		ProjectID: "proj-hostile", ClientSecret: secret, Email: "hostile@example.com", Name: hostileName,
 	}, &resolveBody); err != nil {
 		t.Fatalf("encode: %v", err)
@@ -58,7 +59,7 @@ func TestHostileConsumerCannotInjectIntoPanel(t *testing.T) {
 	if resolveCtx.Status != 200 {
 		t.Fatalf("ResolveUser status %d, want 200", resolveCtx.Status)
 	}
-	var resolveResp routes.ResolveUserResponse
+	var resolveResp config.ResolveUserResponse
 	if err := json.Decode(resolveCtx.ResponseBody(), &resolveResp); err != nil {
 		t.Fatalf("Decode: %v", err)
 	}

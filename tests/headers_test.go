@@ -1,10 +1,12 @@
+//go:build !wasm
+
 package tests
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/veltylabs/iam/routes"
+	"webtyp.com/router/security"
 )
 
 // TestSecurityHeaders_OnEveryRoute recorre TODAS las rutas registradas e
@@ -15,12 +17,12 @@ func TestSecurityHeaders_OnEveryRoute(t *testing.T) {
 	b, r := setupPanel(t, "admin@example.com")
 
 	want := map[string]string{
-		routes.HeaderCSP:            "",
-		routes.HeaderFrameOptions:   "",
-		routes.HeaderContentType:    "",
-		routes.HeaderReferrerPolicy: "",
-		routes.HeaderHSTS:           "",
-		routes.HeaderPermissions:    "",
+		security.HeaderContentSecurityPolicy:   "",
+		security.HeaderXFrameOptions:           "",
+		security.HeaderXContentTypeOptions:     "",
+		security.HeaderReferrerPolicy:          "",
+		security.HeaderStrictTransportSecurity: "",
+		security.HeaderPermissionsPolicy:       "",
 	}
 
 	infos := r.Routes()
@@ -31,6 +33,7 @@ func TestSecurityHeaders_OnEveryRoute(t *testing.T) {
 		ctx := adminCtx(t, b, "admin@example.com")
 		ctx.InMethod = info.Method
 		ctx.InPath = info.Path
+		ctx.SetHeader("X-Forwarded-Proto", "https")
 		r.Invoke(info.Method, info.Path, ctx)
 		for header := range want {
 			if got := ctx.GetHeader(header); got == "" {
@@ -52,7 +55,7 @@ func TestCSPForbidsUnsafeInline(t *testing.T) {
 		ctx.InMethod = info.Method
 		ctx.InPath = info.Path
 		r.Invoke(info.Method, info.Path, ctx)
-		if got := ctx.GetHeader(routes.HeaderCSP); got != "" {
+		if got := ctx.GetHeader(security.HeaderContentSecurityPolicy); got != "" {
 			csp = got
 			break
 		}

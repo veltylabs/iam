@@ -24,7 +24,7 @@ func wireProjects() {
 		f.OnSubmit(func(data model.Fielder, done func(error)) {
 			req, ok := data.(*config.AdminCreateProjectRequest)
 			if !ok || fmt.TrimSpace(req.Name) == "" {
-				done(fmt.Err("Nombre inválido"))
+				done(fmt.Err("Invalid name"))
 				return
 			}
 			var buf []byte
@@ -34,7 +34,7 @@ func wireProjects() {
 			}
 			fetch.Post(config.PathAdminProjects).ContentTypeJSON().Body(buf).Send(func(resp *fetch.Response, err error) {
 				if err != nil || resp.Status != 201 {
-					done(fmt.Err("Fallo al crear proyecto"))
+					done(fmt.Err("Failed to create project"))
 					return
 				}
 				var secretResp config.AdminSecretResponse
@@ -95,7 +95,7 @@ func loadProjectsList() {
 			}
 
 			btnRotate := html.Button().Text("Regenerar secreto")
-			btnRotate.On("click", func(event dom.Event) {
+			btnRotate.OnClick(func(event dom.Event) {
 				req := &config.AdminProjectIDRequest{ProjectId: pID}
 				var buf []byte
 				_ = json.Encode(req, &buf)
@@ -114,7 +114,7 @@ func loadProjectsList() {
 				toggleText = "Desactivar"
 			}
 			btnToggle := html.Button().Text(toggleText)
-			btnToggle.On("click", func(event dom.Event) {
+			btnToggle.OnClick(func(event dom.Event) {
 				req := &config.AdminSetActiveRequest{ProjectId: pID, Active: !pActive}
 				var buf []byte
 				_ = json.Encode(req, &buf)

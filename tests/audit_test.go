@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package tests
 
 import (
@@ -9,7 +11,6 @@ import (
 
 	"github.com/veltylabs/iam/config"
 	"github.com/veltylabs/iam/modules/admin"
-	"github.com/veltylabs/iam/routes"
 )
 
 func TestAudit_RecordsEveryMutation(t *testing.T) {
@@ -140,7 +141,7 @@ func TestAudit_RecordsInvalidClientSecret(t *testing.T) {
 		t.Fatalf("CreateProject: %v", err)
 	}
 
-	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
+	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
 	ctx := &mock.Context{}
 	ctx.SetUserID("user-1")
 	body, err := encodeTokenRequest(t, "proj-audit-deny", "wrong-secret")
@@ -174,7 +175,7 @@ func TestAudit_NeverStoresClientSecret(t *testing.T) {
 	}
 
 	const hostileSecret = "leak-me-client-secret-12345"
-	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
+	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
 	ctx := &mock.Context{}
 	ctx.SetUserID("user-1")
 	body, err := encodeTokenRequest(t, "proj-audit-leak", hostileSecret)

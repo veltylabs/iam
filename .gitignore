@@ -27,3 +27,4 @@ go.work
 /migrate
 web/public/*
 web/server
+/web/public/

@@ -3,7 +3,6 @@
 package main
 
 import (
-	_ "webtyp.com/components/fieldset"
 	"webtyp.com/dom"
 	"webtyp.com/fetch"
 	"webtyp.com/json"

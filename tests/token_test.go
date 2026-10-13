@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package tests
 
 import (
@@ -7,7 +9,6 @@ import (
 	tinyjwt "webtyp.com/jwt"
 	"webtyp.com/router/mock"
 	"github.com/veltylabs/iam/config"
-	"github.com/veltylabs/iam/routes"
 )
 
 // TestIssueAuthToken_UsesMostRestrictiveRoleTTL proves the differentiated
@@ -59,7 +60,7 @@ func TestToken_WrongClientSecret403(t *testing.T) {
 		t.Fatalf("CreateProject: %v", err)
 	}
 
-	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
+	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
 	ctx := &mock.Context{}
 	ctx.SetUserID("user-1")
 	body, err := encodeTokenRequest(t, "proj-1", "wrong-secret")
@@ -86,7 +87,7 @@ func TestToken_UserIDFromSessionNeverFromBody(t *testing.T) {
 		t.Fatalf("CreateUser: %v", err)
 	}
 
-	handler := routes.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
+	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
 	ctx := &mock.Context{}
 	ctx.SetUserID(u.Id)
 	// TokenRequest has no user id field at all — there is no way to smuggle
@@ -103,7 +104,7 @@ func TestToken_UserIDFromSessionNeverFromBody(t *testing.T) {
 	if ctx.Status != 200 {
 		t.Fatalf("status: got %d, want 200", ctx.Status)
 	}
-	var resp routes.TokenResponse
+	var resp config.TokenResponse
 	if err := json.Decode(ctx.ResponseBody(), &resp); err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +125,7 @@ func TestToken_UserIDFromSessionNeverFromBody(t *testing.T) {
 
 func encodeTokenRequest(t *testing.T, projectID, clientSecret string) ([]byte, error) {
 	t.Helper()
-	req := &routes.TokenRequest{ProjectID: projectID, ClientSecret: clientSecret}
+	req := &config.TokenRequest{ProjectID: projectID, ClientSecret: clientSecret}
 	var out []byte
 	if err := json.Encode(req, &out); err != nil {
 		return nil, err
@@ -141,19 +142,19 @@ func TestResolveUser_CreatesThenReusesSameSub(t *testing.T) {
 	if err := config.CreateProject(backend.DB, "proj-1", "Proj One", "correct-secret"); err != nil {
 		t.Fatalf("CreateProject: %v", err)
 	}
-	handler := routes.ResolveUser(backend.DB, backend.Auth)
+	handler := config.ResolveUser(backend.DB, backend.Auth)
 
-	call := func(secret string) (int, routes.ResolveUserResponse) {
+	call := func(secret string) (int, config.ResolveUserResponse) {
 		ctx := &mock.Context{}
 		var body []byte
-		if err := json.Encode(&routes.ResolveUserRequest{
+		if err := json.Encode(&config.ResolveUserRequest{
 			ProjectID: "proj-1", ClientSecret: secret, Email: "client@test.com", Name: "Client",
 		}, &body); err != nil {
 			t.Fatal(err)
 		}
 		ctx.InBody = body
 		handler(ctx)
-		var resp routes.ResolveUserResponse
+		var resp config.ResolveUserResponse
 		_ = json.Decode(ctx.ResponseBody(), &resp)
 		return ctx.Status, resp
 	}

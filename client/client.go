@@ -31,7 +31,7 @@ const SSOCookieName = "iam_session"
 // anonymous", never as an error worth alarming on: an expired or absent
 // session is routine, not an attack (same principle as tinywasm/jwt's
 // Outcome — see its docs).
-var ErrNoSSOSession = fmt.Err("iam", "sso", "session-required")
+var ErrNoSSOSession = fmt.Err("sso", "session-required")
 
 type tokenRequest struct {
 	ProjectID    string

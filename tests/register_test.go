@@ -1,10 +1,12 @@
+//go:build !wasm
+
 package tests
 
 import (
 	"testing"
 
 	"webtyp.com/router/mock"
-	"github.com/veltylabs/iam/routes"
+	"github.com/veltylabs/iam/config"
 )
 
 // TestRegister_MountsAuthRoutes is the regression test for the defect this
@@ -18,7 +20,7 @@ func TestRegister_MountsAuthRoutes(t *testing.T) {
 	backend := setupBackend(t)
 
 	r := &mock.Router{}
-	routes.Register(r, backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, nil, backend.IDs, backend.PanelOrigin)
+	config.RegisterRoutes(r, backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, nil, backend.IDs, backend.PanelOrigin)
 
 	cases := []struct {
 		method, path string

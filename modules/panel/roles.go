@@ -20,7 +20,7 @@ func wireRoles() {
 
 	ref, ok := dom.Get(IDRolesProject)
 	if ok {
-		ref.On("change", func(event dom.Event) {
+		ref.OnChange(func(event dom.Event) {
 			currentSelectedProjectID = ref.Value()
 			loadRolesViewForProject(currentSelectedProjectID)
 		})
@@ -75,7 +75,7 @@ func loadRolesViewForProject(projectID string) {
 		f.OnSubmit(func(data model.Fielder, done func(error)) {
 			rReq, ok := data.(*config.AdminCreateRoleRequest)
 			if !ok || fmt.TrimSpace(rReq.Code) == "" {
-				done(fmt.Err("Código de rol requerido"))
+				done(fmt.Err("Role code required"))
 				return
 			}
 			rReq.ProjectId = projectID
@@ -86,7 +86,7 @@ func loadRolesViewForProject(projectID string) {
 			}
 			fetch.Post(config.PathAdminRoles).ContentTypeJSON().Body(buf).Send(func(resp *fetch.Response, err error) {
 				if err != nil || resp.Status != 201 {
-					done(fmt.Err("Error creando el rol"))
+					done(fmt.Err("Error creating role"))
 					return
 				}
 				done(nil)
@@ -132,7 +132,7 @@ func loadRolesList(projectID string) {
 			ttlInputID := "ttl-" + rCode
 			ttlInput := html.Input("number").ID(ttlInputID).Attr("value", fmt.Sprintf("%d", rTTL)).Class("iam-input-sm")
 			btnTTL := html.Button().Text("Guardar TTL")
-			btnTTL.On("click", func(event dom.Event) {
+			btnTTL.OnClick(func(event dom.Event) {
 				ref, ok := dom.Get(ttlInputID)
 				val := ""
 				if ok {
@@ -151,7 +151,7 @@ func loadRolesList(projectID string) {
 			})
 
 			btnDelete := html.Button().Text("Borrar").Class("iam-btn-danger")
-			btnDelete.On("click", func(event dom.Event) {
+			btnDelete.OnClick(func(event dom.Event) {
 				refReq := &config.AdminRoleRefRequest{ProjectId: projectID, Code: rCode}
 				var buf []byte
 				_ = json.Encode(refReq, &buf)

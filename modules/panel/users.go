@@ -21,7 +21,7 @@ func wireUsers() {
 		f.OnSubmit(func(data model.Fielder, done func(error)) {
 			req, ok := data.(*config.AdminUserRoleRequest)
 			if !ok || fmt.TrimSpace(req.ProjectId) == "" || fmt.TrimSpace(req.Code) == "" || fmt.TrimSpace(req.Email) == "" {
-				done(fmt.Err("Todos los campos (Project ID, Rol Code, Email) son requeridos"))
+				done(fmt.Err("All fields (Project ID, Role Code, Email) are required"))
 				return
 			}
 			var buf []byte
@@ -31,7 +31,7 @@ func wireUsers() {
 			}
 			fetch.Post(config.PathAdminUserAssign).ContentTypeJSON().Body(buf).Send(func(resp *fetch.Response, err error) {
 				if err != nil || resp.Status != 200 {
-					done(fmt.Err("Error al asignar rol"))
+					done(fmt.Err("Error assigning role"))
 					return
 				}
 				var assignResp config.AdminAssignResponse
@@ -78,7 +78,7 @@ func loadRoleUsersList(projectID, code string) {
 		for _, u := range usersResp.Users {
 			uEmail := u.Email
 			btnRevoke := html.Button().Text("Revocar").Class("iam-btn-danger")
-			btnRevoke.On("click", func(event dom.Event) {
+			btnRevoke.OnClick(func(event dom.Event) {
 				req := &config.AdminUserRoleRequest{ProjectId: projectID, Code: code, Email: uEmail}
 				var buf []byte
 				_ = json.Encode(req, &buf)

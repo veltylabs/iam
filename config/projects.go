@@ -33,7 +33,7 @@ func IsProjectNotFound(err error) bool {
 // hash de un client_secret. HMAC sobre una clave vacía es matemática válida:
 // produce un hash que verifica, con una clave que cualquiera puede derivar.
 // Fallar es la única respuesta correcta — misma decisión que jwt.ErrEmptySecret.
-var ErrMissingJWTSecret = fmt.Err("iam", "JWT_SECRET", "required")
+var ErrMissingJWTSecret = fmt.Err("JWT_SECRET", "required")
 
 const clientSecretPrefix = "iam_sk_"
 

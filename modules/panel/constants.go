@@ -11,6 +11,10 @@ const (
 	ModuleAudit    = "audit"
 )
 
+// Panel aloja los assets e iconos del módulo panel de administración.
+type Panel struct{}
+
+
 const (
 	IconProjects = svg.Icon("iam-projects")
 	IconRoles    = svg.Icon("iam-roles")

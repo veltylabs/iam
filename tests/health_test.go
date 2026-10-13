@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package tests
 
 import (
@@ -6,11 +8,11 @@ import (
 	"webtyp.com/orm"
 	"webtyp.com/router/mock"
 	"webtyp.com/storage/mem"
-	"github.com/veltylabs/iam/routes"
+	"github.com/veltylabs/iam/config"
 )
 
 func TestHealthDoesNotTouchDB(t *testing.T) {
-	handler := routes.Health()
+	handler := config.Health()
 	ctx := &mock.Context{}
 	handler(ctx)
 
@@ -23,7 +25,7 @@ func TestHealthDoesNotTouchDB(t *testing.T) {
 }
 
 func TestHealthDBReportsFailure(t *testing.T) {
-	handler := routes.HealthDB(nil)
+	handler := config.HealthDB(nil)
 	ctx := &mock.Context{}
 	handler(ctx)
 
@@ -37,7 +39,7 @@ func TestHealthDBReportsFailure(t *testing.T) {
 
 func TestHealthDBReportsSuccess(t *testing.T) {
 	db := orm.New(mem.New())
-	handler := routes.HealthDB(db)
+	handler := config.HealthDB(db)
 	ctx := &mock.Context{}
 	handler(ctx)
 

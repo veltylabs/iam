@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package tests
 
 import (
@@ -14,7 +16,6 @@ import (
 	"webtyp.com/time"
 	"github.com/veltylabs/iam/client"
 	"github.com/veltylabs/iam/config"
-	"github.com/veltylabs/iam/routes"
 )
 
 func TestNewRejectsEmptyConfig(t *testing.T) {
@@ -239,12 +240,12 @@ func TestAssignRoleIsIdempotent(t *testing.T) {
 	if err := backend.RBAC.CreateRole(projectID, "r-editor", model.RoleCode("editor"), "Editor", ""); err != nil {
 		t.Fatalf("CreateRole: %v", err)
 	}
-	handler := routes.AssignRole(backend.DB, backend.RBAC)
+	handler := config.AssignRole(backend.DB, backend.RBAC)
 
 	call := func(userID, roleCode string) int {
 		ctx := &mock.Context{}
 		var out []byte
-		if err := json.Encode(&routes.AssignRoleRequest{
+		if err := json.Encode(&config.AssignRoleRequest{
 			ProjectID: projectID, ClientSecret: "proj-secret", UserID: userID, RoleCode: roleCode,
 		}, &out); err != nil {
 			t.Fatalf("encode: %v", err)
@@ -315,10 +316,10 @@ func TestAssignRoleIsScopedToTheProject(t *testing.T) {
 	if contains(gotBody, otherProjectID) {
 		t.Errorf("body should not contain other project %q, got %q", otherProjectID, gotBody)
 	}
-	handler := routes.AssignRole(backend.DB, backend.RBAC)
+	handler := config.AssignRole(backend.DB, backend.RBAC)
 	ctx := &mock.Context{}
 	var out []byte
-	if err := json.Encode(&routes.AssignRoleRequest{
+	if err := json.Encode(&config.AssignRoleRequest{
 		ProjectID: projectID, ClientSecret: "secret-scoped", UserID: u.Id, RoleCode: "editor",
 	}, &out); err != nil {
 		t.Fatal(err)

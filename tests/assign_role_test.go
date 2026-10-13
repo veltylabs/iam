@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package tests
 
 import (
@@ -6,7 +8,6 @@ import (
 	"webtyp.com/json"
 	"webtyp.com/router/mock"
 	"github.com/veltylabs/iam/config"
-	"github.com/veltylabs/iam/routes"
 )
 
 // TestAssignRoleUnknownCode404: /api/roles/assign ya no crea roles. Un
@@ -23,11 +24,11 @@ func TestAssignRoleUnknownCode404(t *testing.T) {
 		t.Fatalf("CreateUser: %v", err)
 	}
 
-	handler := routes.AssignRole(backend.DB, backend.RBAC)
+	handler := config.AssignRole(backend.DB, backend.RBAC)
 	call := func(roleCode string) int {
 		ctx := &mock.Context{}
 		var out []byte
-		if err := json.Encode(&routes.AssignRoleRequest{
+		if err := json.Encode(&config.AssignRoleRequest{
 			ProjectID: projectID, ClientSecret: "secret-404", UserID: u.Id, RoleCode: roleCode,
 		}, &out); err != nil {
 			t.Fatalf("encode: %v", err)

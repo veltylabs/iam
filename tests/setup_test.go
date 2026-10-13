@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package tests
 
 import (
@@ -11,7 +13,6 @@ import (
 	"webtyp.com/sqlt"
 	"webtyp.com/storage/mem"
 	"github.com/veltylabs/iam/config"
-	"github.com/veltylabs/iam/routes"
 )
 
 // testPanelOrigin es el origen del panel en tests — lo que NewProductionBackend
@@ -82,7 +83,7 @@ func setupPanelWithOrigin(t *testing.T, adminEmail, origin string) (*config.Back
 	b := setupBackend(t)
 	b.PanelOrigin = origin
 	r := &mock.Router{}
-	routes.Register(r, b.DB, b.Auth, b.RBAC, b.JWTSecret, []string{adminEmail}, b.IDs, origin)
+	config.RegisterRoutes(r, b.DB, b.Auth, b.RBAC, b.JWTSecret, []string{adminEmail}, b.IDs, origin)
 	return b, r
 }
 

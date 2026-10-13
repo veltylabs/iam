@@ -36,7 +36,8 @@ consumidora (ej. `SiteMember` de `misitio`) se queda en esa app.
 
 ## Restricción #2 — el harness: nunca recrear localmente un símbolo que falta
 
-Doctrina completa: [`webtyp/app/docs/CONSTRUCTION_HARNESS.md`](https://github.com/webtyp/app/blob/main/docs/CONSTRUCTION_HARNESS.md)
+Doctrina completa: skill **api-design** — the construction harness
+([`webtyp/devskills/skills/api-design/SKILL.md`](https://github.com/webtyp/devskills/blob/main/skills/api-design/SKILL.md))
 — aplica a todo el ecosistema.
 
 - **Si una librería no expone lo que este repo necesita, se detiene y se
