@@ -49,7 +49,7 @@ require (
 	webtyp.com/await v0.1.2 // indirect
 	webtyp.com/color v0.1.3 // indirect
 	webtyp.com/command v0.0.4 // indirect
-	webtyp.com/components v0.8.26 // indirect
+	webtyp.com/components v0.8.30 // indirect
 	webtyp.com/context v0.0.23 // indirect
 	webtyp.com/css v0.4.30 // indirect
 	webtyp.com/date v0.0.10 // indirect
