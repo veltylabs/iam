@@ -39,6 +39,7 @@ jobs:
           worker: iam
           domain: iam.velty.cl
           d1-binding: DB
+          d1-name: velty-iam-db
           test: './tests/...'
           pre-deploy: 'go run ./cmd/migrate'
           deploy: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
