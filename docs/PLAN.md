@@ -2,6 +2,8 @@
 PLAN: "feat(security)!: iam back inside the framework — Requires+RBAC everywhere, passkey-only admin plane, private_key_jwt clients, revocable sessions; deployment declared in config/deploy.go"
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 12558430203965191498
 ---
 
 > Read AGENTS.md at the repo root before any change.
