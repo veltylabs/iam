@@ -11,56 +11,56 @@ import (
 )
 
 const (
+	PathHealth       = "/api/health"
+	PathHealthDB     = "/api/health/db"
+	PathToken        = "/api/token"
+	PathUsersResolve = "/api/users/resolve"
+	PathRolesAssign  = "/api/roles/assign"
+
+	PathAdminMe            = "/api/admin/me"
+	PathAdminProjects      = "/api/admin/projects"     // GET lista · POST crea
+	PathAdminProjectKey    = "/api/admin/projects/key" // POST
+	PathAdminProjectActive = "/api/admin/projects/active" // POST
+	PathAdminRoles         = "/api/admin/roles"        // GET ?project_id= · POST crea
+	PathAdminRoleTTL       = "/api/admin/roles/ttl"    // POST
+	PathAdminRoleDelete    = "/api/admin/roles/delete" // POST
+	PathAdminRoleUsers     = "/api/admin/roles/users"  // GET ?project_id=&code=
+	PathAdminUserAssign    = "/api/admin/users/assign" // POST
+	PathAdminUserRevoke    = "/api/admin/users/revoke" // POST
+	PathAdminAudit         = "/api/admin/audit"        // GET
+
 	bodyHealthOK   = `{"ok":true}`
 	bodyHealthFail = `{"ok":false}`
-	healthProbeSQL = "SELECT 1"
 )
 
-// Register monta todas las rutas del servicio iam sobre el router provisto para el servidor local.
-func Register(r router.Router) {
-	registerLocal(r)
-}
-
-// RegisterRoutes monta todas las rutas del servicio iam con sus dependencias explícitas
-// (usado por edge/main.go, Register local y el arnés de tests).
-func RegisterRoutes(r router.Router, db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte, adminEmails []string, ids model.IDGenerator, panelOrigin string) {
+// RegisterRoutes monta todas las rutas del servicio iam con sus dependencias explícitas.
+func RegisterRoutes(r router.Router, b *Backend, adminEmails []string) {
 	policy := security.Policy{}.AllowImages("https://lh3.googleusercontent.com")
 	r.Use(policy.Middleware())
 
-	r.Use(authMod.Authenticate())
-
-	modules := []router.APIModule{authMod}
-	for _, m := range modules {
-		m.MountAPI(r)
-	}
+	b.Auth.MountAPI(r)
 
 	r.Get(PathHealth, Health()).Public()
-	r.Get(PathHealthDB, HealthDB(db)).Public()
-	r.Post(PathToken, Token(db, authMod, rbacSvc, secret, ids)).Authenticated()
-	r.Post(PathUsersResolve, ResolveUser(db, authMod)).Public()
-	r.Post(PathRolesAssign, AssignRole(db, rbacSvc)).Public()
+	r.Get(PathHealthDB, HealthDB(b.DB)).Requires(ResourceHealth, model.Read).RequiresMFA()
+	r.Post(PathToken, Token(b.DB, b.Auth, b.RBAC, b.JWTSecret, b.IDs)).Requires(ResourceToken, model.Create)
+	r.Post(PathUsersResolve, ResolveUser(b.DB, b.Auth, b.IDs)).Requires(ResourceIdentity, model.Create)
+	r.Post(PathRolesAssign, AssignRole(b.DB, b.RBAC, b.IDs)).Requires(ResourceRoleGrant, model.Create)
 
-	r.Get(PathAdminMe, RequirePanelAdmin(db, ids, authMod, adminEmails, Me(authMod))).Public()
-	r.Get(PathAdminProjects, RequirePanelAdmin(db, ids, authMod, adminEmails, ListProjectsHandler(db))).Public()
-	adminPost(r, PathAdminProjects, db, authMod, adminEmails, ids, panelOrigin, CreateProjectHandler(db, ids))
-	adminPost(r, PathAdminProjectRotate, db, authMod, adminEmails, ids, panelOrigin, RotateSecretHandler(db, ids))
-	adminPost(r, PathAdminProjectActive, db, authMod, adminEmails, ids, panelOrigin, SetActiveHandler(db, ids))
-	r.Get(PathAdminRoles, RequirePanelAdmin(db, ids, authMod, adminEmails, ListRolesHandler(db, rbacSvc))).Public()
-	adminPost(r, PathAdminRoles, db, authMod, adminEmails, ids, panelOrigin, CreateRoleHandler(db, rbacSvc, ids))
-	adminPost(r, PathAdminRoleTTL, db, authMod, adminEmails, ids, panelOrigin, SetRoleTTLHandler(db, rbacSvc, ids))
-	adminPost(r, PathAdminRoleDelete, db, authMod, adminEmails, ids, panelOrigin, DeleteRoleHandler(db, rbacSvc, ids))
-	r.Get(PathAdminRoleUsers, RequirePanelAdmin(db, ids, authMod, adminEmails, ListRoleUsersHandler(db, authMod, rbacSvc))).Public()
-	adminPost(r, PathAdminUserAssign, db, authMod, adminEmails, ids, panelOrigin, AssignUserHandler(db, authMod, rbacSvc, ids))
-	adminPost(r, PathAdminUserRevoke, db, authMod, adminEmails, ids, panelOrigin, RevokeUserHandler(db, authMod, rbacSvc, ids))
-	r.Get(PathAdminAudit, RequirePanelAdmin(db, ids, authMod, adminEmails, ListAuditHandler(db))).Public()
+	r.Get(PathAdminMe, Me(b.DB, b.Auth, b.RBAC)).Authenticated()
+	r.Get(PathAdminProjects, ListProjectsHandler(b.DB)).Requires(ResourceProject, model.Read).RequiresMFA()
+	r.Post(PathAdminProjects, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, CreateProjectHandler(b.DB, b.IDs, b.Auth, b.RBAC))).Requires(ResourceProject, model.Create).RequiresMFA()
+	r.Post(PathAdminProjectKey, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, SetProjectKeyHandler(b.DB, b.IDs, b.Auth))).Requires(ResourceProject, model.Update).RequiresMFA()
+	r.Post(PathAdminProjectActive, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, SetActiveHandler(b.DB, b.IDs, b.Auth))).Requires(ResourceProject, model.Update).RequiresMFA()
+	r.Get(PathAdminRoles, ListRolesHandler(b.DB, b.RBAC)).Requires(ResourceRole, model.Read).RequiresMFA()
+	r.Post(PathAdminRoles, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, CreateRoleHandler(b.DB, b.RBAC, b.IDs, b.Auth))).Requires(ResourceRole, model.Create).RequiresMFA()
+	r.Post(PathAdminRoleTTL, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, SetRoleTTLHandler(b.DB, b.RBAC, b.IDs, b.Auth))).Requires(ResourceRole, model.Update).RequiresMFA()
+	r.Post(PathAdminRoleDelete, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, DeleteRoleHandler(b.DB, b.RBAC, b.IDs, b.Auth))).Requires(ResourceRole, model.Delete).RequiresMFA()
+	r.Get(PathAdminRoleUsers, ListRoleUsersHandler(b.DB, b.Auth, b.RBAC)).Requires(ResourceUserRole, model.Read).RequiresMFA()
+	r.Post(PathAdminUserAssign, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))).Requires(ResourceUserRole, model.Create).RequiresMFA()
+	r.Post(PathAdminUserRevoke, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, RevokeUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))).Requires(ResourceUserRole, model.Delete).RequiresMFA()
+	r.Get(PathAdminAudit, ListAuditHandler(b.DB)).Requires(ResourceAudit, model.Read).RequiresMFA()
 
-	router.MountIntrospection(r, router.IntrospectionPath, nil).Public()
-}
-
-func adminPost(r router.Router, path string, db *orm.DB, authMod *authority.Module, adminEmails []string, ids model.IDGenerator, origin string, h func(router.Context, string)) {
-	r.Post(path,
-		RequirePanelAdmin(db, ids, authMod, adminEmails,
-			RequireSameOrigin(db, ids, origin, h))).Public()
+	router.MountIntrospection(r, router.IntrospectionPath, nil).Requires(ResourceRoutes, model.Read).RequiresMFA()
 }
 
 // Health responde si el servidor está vivo.
@@ -82,7 +82,8 @@ func HealthDB(db *orm.DB) router.HandlerFunc {
 			_, _ = ctx.Write([]byte(bodyHealthFail))
 			return
 		}
-		if err := db.RawConn().Exec(healthProbeSQL); err != nil {
+		qb := db.Query(&Project{}).Limit(1)
+		if _, err := ReadAllProject(qb); err != nil {
 			ctx.WriteStatus(503)
 			_, _ = ctx.Write([]byte(bodyHealthFail))
 			return
@@ -94,18 +95,15 @@ func HealthDB(db *orm.DB) router.HandlerFunc {
 
 // TokenRequest es el cuerpo de POST /api/token.
 type TokenRequest struct {
-	ProjectID    string
-	ClientSecret string
+	SubjectToken string
 }
 
 func (t *TokenRequest) IsNil() bool { return t == nil }
 func (t *TokenRequest) EncodeFields(w model.FieldWriter) {
-	w.String("project_id", t.ProjectID)
-	w.String("client_secret", t.ClientSecret)
+	w.String("subject_token", t.SubjectToken)
 }
 func (t *TokenRequest) DecodeFields(r model.FieldReader) {
-	t.ProjectID, _ = r.String("project_id")
-	t.ClientSecret, _ = r.String("client_secret")
+	t.SubjectToken, _ = r.String("subject_token")
 }
 
 // TokenResponse es la respuesta de POST /api/token.
@@ -130,38 +128,37 @@ func (t *TokenResponse) DecodeFields(r model.FieldReader) {
 	t.Avatar, _ = r.String("avatar")
 }
 
-// Token emite un token de autorización project-scoped para el usuario de la sesión activa.
+// Token emite un token de autorización project-scoped mediante token exchange (RFC 8693).
 func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte, ids model.IDGenerator) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
-		userID := ctx.UserID()
-		if userID == "" {
+		projectID := ctx.UserID()
+		if projectID == "" {
 			ctx.WriteStatus(401)
 			return
 		}
+
 		var body TokenRequest
-		if err := ctx.Decode(&body); err != nil {
+		if err := ctx.Decode(&body); err != nil || body.SubjectToken == "" {
 			ctx.WriteStatus(400)
 			return
 		}
-		ok, err := VerifyProjectSecret(db, body.ProjectID, body.ClientSecret)
+
+		sess, err := authMod.GetSession(body.SubjectToken)
 		if err != nil {
-			ctx.WriteStatus(500)
-			return
-		}
-		if !ok {
-			if err := RecordAudit(db, ids, "", AuditTokenDenied, body.ProjectID, ""); err != nil {
-				fmt.Println("audit:", err)
+			if aerr := RecordAudit(db, ids, projectID, AuditTokenDenied, projectID, ""); aerr != nil {
+				fmt.Println("audit:", aerr)
 			}
-			ctx.WriteStatus(403)
+			ctx.WriteStatus(401)
 			return
 		}
-		token, err := IssueAuthToken(rbacSvc, secret, body.ProjectID, userID)
+
+		token, err := IssueAuthToken(rbacSvc, secret, projectID, sess.UserId)
 		if err != nil {
 			ctx.WriteStatus(500)
 			return
 		}
-		u, err := authMod.GetUser(userID)
+		u, err := authMod.GetUser(sess.UserId)
 		if err != nil {
 			ctx.WriteStatus(500)
 			return
@@ -173,22 +170,16 @@ func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret 
 
 // ResolveUserRequest es el cuerpo de POST /api/users/resolve.
 type ResolveUserRequest struct {
-	ProjectID    string
-	ClientSecret string
-	Email        string
-	Name         string
+	Email string
+	Name  string
 }
 
 func (r *ResolveUserRequest) IsNil() bool { return r == nil }
 func (r *ResolveUserRequest) EncodeFields(w model.FieldWriter) {
-	w.String("project_id", r.ProjectID)
-	w.String("client_secret", r.ClientSecret)
 	w.String("email", r.Email)
 	w.String("name", r.Name)
 }
 func (r *ResolveUserRequest) DecodeFields(fr model.FieldReader) {
-	r.ProjectID, _ = fr.String("project_id")
-	r.ClientSecret, _ = fr.String("client_secret")
 	r.Email, _ = fr.String("email")
 	r.Name, _ = fr.String("name")
 }
@@ -206,24 +197,50 @@ func (r *ResolveUserResponse) DecodeFields(fr model.FieldReader) {
 	r.Sub, _ = fr.String("sub")
 }
 
+// ResolveUser busca un usuario por email dentro de la identidad global de iam y lo crea si no existe.
+func ResolveUser(db *orm.DB, authMod *authority.Module, ids model.IDGenerator) router.HandlerFunc {
+	return func(ctx router.Context) {
+		ctx.SetHeader("Content-Type", "application/json")
+		projectID := ctx.UserID()
+		if projectID == "" {
+			ctx.WriteStatus(401)
+			return
+		}
+
+		var body ResolveUserRequest
+		if err := ctx.Decode(&body); err != nil || body.Email == "" {
+			ctx.WriteStatus(400)
+			return
+		}
+
+		u, err := authMod.UserByEmail(body.Email)
+		if err != nil {
+			u, err = authMod.CreateUser(body.Email, body.Name, "")
+			if err != nil {
+				ctx.WriteStatus(500)
+				return
+			}
+			if aerr := RecordAudit(db, ids, projectID, AuditIdentityCreatedByClient, body.Email, ""); aerr != nil {
+				fmt.Println("audit:", aerr)
+			}
+		}
+		ctx.WriteStatus(200)
+		_ = ctx.Encode(&ResolveUserResponse{Sub: u.Id})
+	}
+}
+
 // AssignRoleRequest es el cuerpo de POST /api/roles/assign.
 type AssignRoleRequest struct {
-	ProjectID    string
-	ClientSecret string
-	UserID       string
-	RoleCode     string
+	UserID   string
+	RoleCode string
 }
 
 func (r *AssignRoleRequest) IsNil() bool { return r == nil }
 func (r *AssignRoleRequest) EncodeFields(w model.FieldWriter) {
-	w.String("project_id", r.ProjectID)
-	w.String("client_secret", r.ClientSecret)
 	w.String("user_id", r.UserID)
 	w.String("role_code", r.RoleCode)
 }
 func (r *AssignRoleRequest) DecodeFields(fr model.FieldReader) {
-	r.ProjectID, _ = fr.String("project_id")
-	r.ClientSecret, _ = fr.String("client_secret")
 	r.UserID, _ = fr.String("user_id")
 	r.RoleCode, _ = fr.String("role_code")
 }
@@ -235,9 +252,15 @@ func (r *AssignRoleResponse) EncodeFields(w model.FieldWriter)  {}
 func (r *AssignRoleResponse) DecodeFields(fr model.FieldReader) {}
 
 // AssignRole concede roleCode al usuario en el proyecto del llamante.
-func AssignRole(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
+func AssignRole(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
+		projectID := ctx.UserID()
+		if projectID == "" {
+			ctx.WriteStatus(401)
+			return
+		}
+
 		var body AssignRoleRequest
 		if err := ctx.Decode(&body); err != nil {
 			ctx.WriteStatus(400)
@@ -247,16 +270,8 @@ func AssignRole(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
 			ctx.WriteStatus(400)
 			return
 		}
-		ok, err := VerifyProjectSecret(db, body.ProjectID, body.ClientSecret)
-		if err != nil {
-			ctx.WriteStatus(500)
-			return
-		}
-		if !ok {
-			ctx.WriteStatus(403)
-			return
-		}
-		if err := rbacSvc.AssignRoleByCode(body.ProjectID, body.UserID, model.RoleCode(body.RoleCode)); err != nil {
+
+		if err := rbacSvc.AssignRoleByCode(projectID, body.UserID, model.RoleCode(body.RoleCode)); err != nil {
 			if rbac.IsRoleNotFound(err) {
 				ctx.WriteStatus(404)
 				return
@@ -264,42 +279,10 @@ func AssignRole(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
 			ctx.WriteStatus(500)
 			return
 		}
+		if aerr := RecordAudit(db, ids, projectID, AuditRoleGrantedByClient, body.UserID+":"+body.RoleCode, ""); aerr != nil {
+			fmt.Println("audit:", aerr)
+		}
 		ctx.WriteStatus(200)
 		_ = ctx.Encode(&AssignRoleResponse{})
-	}
-}
-
-// ResolveUser busca un usuario por email dentro de la identidad global de iam y lo crea si no existe.
-func ResolveUser(db *orm.DB, authMod *authority.Module) router.HandlerFunc {
-	return func(ctx router.Context) {
-		ctx.SetHeader("Content-Type", "application/json")
-		var body ResolveUserRequest
-		if err := ctx.Decode(&body); err != nil {
-			ctx.WriteStatus(400)
-			return
-		}
-		if body.Email == "" {
-			ctx.WriteStatus(400)
-			return
-		}
-		ok, err := VerifyProjectSecret(db, body.ProjectID, body.ClientSecret)
-		if err != nil {
-			ctx.WriteStatus(500)
-			return
-		}
-		if !ok {
-			ctx.WriteStatus(403)
-			return
-		}
-		u, err := authMod.UserByEmail(body.Email)
-		if err != nil {
-			u, err = authMod.CreateUser(body.Email, body.Name, "")
-			if err != nil {
-				ctx.WriteStatus(500)
-				return
-			}
-		}
-		ctx.WriteStatus(200)
-		_ = ctx.Encode(&ResolveUserResponse{Sub: u.Id})
 	}
 }

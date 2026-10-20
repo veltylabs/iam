@@ -5,89 +5,62 @@ GitHub Actions corre `goflare build` + `goflare deploy` (Go puro, sin Node ni
 Wrangler — ver `AGENTS.md`). `iam` es un Worker con panel (assets estáticos +
 `client.wasm` en `web/public`).
 
-## Las dos clases de variable
+## Declaración tipada de despliegue (`config/deploy.go`)
 
-| | Dónde vive | Quién la lee | Cuándo |
-|---|---|---|---|
-| **De despliegue** | GitHub → Secrets y `env:` del workflow | la Action, para hablarle a Cloudflare | al hacer push |
-| **De ejecución** | Cloudflare → Worker `iam` (como Secret) | el Worker, con `env.Reader` (`cloudflare.Env` en producción) | en cada petición |
+El despliegue de `iam` se declara de forma tipada en `config/deploy.go` mediante
+`deploy.Plan`.
 
-### De despliegue — GitHub Secrets (3) y `deploy.yml`
+Abre `iam` en la aplicación de escritorio `webtyp`, ve a la pestaña **DEPLOY** y
+sigue la lista de comprobación guiada (checklist construida automáticamente desde
+`config/deploy.go`). El cliente OAuth de Google es el único paso manual y la
+lista de comprobación muestra sus pasos exactos.
 
-`.github/workflows/deploy.yml` configura el paso `Deploy with goflare` con:
+Las variables y secretos de ejecución son inyectados al entorno del Worker por el sistema:
+- `GOOGLE_CLIENT_ID`: Identificador del cliente OAuth en Google Cloud Console.
+- `GOOGLE_CLIENT_SECRET`: Clave secreta del cliente OAuth.
+- `GOOGLE_REDIRECT_URL`: `https://iam.velty.cl/oauth/callback/google`.
+- `JWT_SECRET`: Clave simétrica que firma tokens de autorización.
+- `IAM_PANEL_ORIGIN`: Origen exacto del panel (`https://iam.velty.cl`).
+- `IAM_ADMIN_EMAILS`: Lista de correos semilla asignados al rol `iam_admin`.
 
-| Clave | Dónde se define | Para qué |
-|---|---|---|
-| `CLOUDFLARE_ACCOUNT_ID` | Secret | Identifica la cuenta `velty` |
-| `CLOUDFLARE_API_TOKEN` | Secret | Permisos de **Workers Scripts: Edit** y **Workers Routes: Edit** |
-| `D1_DATABASE_ID` | Secret | ID de `velty-iam-db` |
-| `PROJECT_NAME`/`WORKER_NAME` | inline (`iam`) | Nombre del Worker |
-| `DOMAIN` | inline (`iam.velty.cl`) | Dominio personalizado |
-| `D1_DATABASE_NAME` | inline (`DB`) | Nombre del binding exigido por `routes.BindingD1` |
+La base de datos D1 (`velty-iam-db`) se resuelve automáticamente por nombre por `goflare`
+y su binding `DB` es vinculado al Worker sin requerir configuración manual de IDs.
 
-Van por repositorio (GitHub Free no comparte secretos de organización con
-repos privados):
+## Despliegue de la ola de seguridad
 
-```bash
-gh secret set CLOUDFLARE_ACCOUNT_ID --repo veltylabs/iam
-gh secret set CLOUDFLARE_API_TOKEN  --repo veltylabs/iam
-gh secret set D1_DATABASE_ID        --repo veltylabs/iam
-```
+Para transicionar la infraestructura al esquema de aserciones de máquina (RFC 7523) y
+passkeys para administración, sigue este orden estricto:
 
-### De ejecución — variables del Worker en Cloudflare (6)
+1. **Desplegar `iam`**:
+   Desde la pestaña **DEPLOY** de `webtyp` (o mediante push a `main`).
+2. **Generar el par de claves para cada consumidor**:
+   Ejecuta localmente:
+   ```bash
+   go run ./cmd/keygen
+   ```
+   Esto imprime la clave privada en formato base64url y la clave pública SPKI en base64url.
+3. **Declarar la clave privada en el consumidor**:
+   La app consumidora declara `IAM_CLIENT_PRIVATE_KEY` en su propio `config/deploy.go`
+   (`Source: deploy.Typed`, `To: []deploy.Place{deploy.ToRuntime}`). Su desarrollador
+   ingresa la clave privada generada en la pestaña **DEPLOY** de ese consumidor (nunca
+   en `.env`, un chat o tableros externos).
+4. **Registrar la clave pública en el panel de `iam`**:
+   Un administrador inicia sesión en `https://iam.velty.cl`. El primer administrador
+   debe enrolar su passkey WebAuthn dentro de los primeros 5 minutos tras su login con Google.
+   En la sección de proyectos, registra o actualiza la clave pública del consumidor.
+5. **Desplegar el consumidor**.
+6. **Limpieza en el consumidor**:
+   El consumidor retira el antiguo `IAM_CLIENT_SECRET` de sus declaraciones y entorno.
 
-El Worker las lee con `env.Reader` (`cloudflare.Env` en `edge/main.go`, ver
-`config/auth.go`). **Sin las tres de Google, sin `JWT_SECRET` y sin
-`IAM_PANEL_ORIGIN` no arranca** —
-deliberado: un servicio de identidad que arranca a medias es peor que uno que
-no arranca. `IAM_ADMIN_EMAILS` no impide el arranque, pero sin ella nadie
-puede entrar al panel.
+> [!NOTE]
+> Hasta completar el paso 4, las llamadas de máquina del consumidor a `/api/token`,
+> `/api/users/resolve` y `/api/roles/assign` recibirán 403 Forbidden.
 
-Cloudflare → Workers & Pages → `iam` → *Settings* → *Variables and Secrets*,
-las seis como tipo **Secret** (no texto plano — un `PUT` de script que no
-declara un binding `secret_text` en su metadata lo borra si era texto plano,
-pero lo conserva si era Secret):
+## Cabeceras de seguridad para assets estáticos
 
-| Variable | Obligatoria | Qué pasa si falta |
-|---|---|---|
-| `GOOGLE_CLIENT_ID` | sí | el Worker no arranca |
-| `GOOGLE_CLIENT_SECRET` | sí | el Worker no arranca |
-| `GOOGLE_REDIRECT_URL` | sí | `https://iam.velty.cl/oauth/callback/google`, registrada en Google Cloud Console |
-| `JWT_SECRET` | sí | el Worker no arranca — firma la cookie SSO y los tokens de autorización |
-| `IAM_PANEL_ORIGIN` | sí | el Worker no arranca — origen exacto del panel (`https://iam.velty.cl`); las mutaciones de `/api/admin/*` solo aceptan peticiones de este origen (ver `docs/ARCHITECTURE.md` §8.7) |
-| `IAM_ADMIN_EMAILS` | sí | el panel de administración no admite a nadie (lista de correos separada por coma; ver `docs/ARCHITECTURE.md` §8.2) |
-
-## El camino, en orden
-
-### 0 · D1 y el Account ID *(una vez)*
-
-`velty-iam-db` ya existe en la cuenta `velty` (creada 2026-08-25). Copia su
-`uuid` para el secreto `D1_DATABASE_ID`, y el Account ID de la cuenta para
-`CLOUDFLARE_ACCOUNT_ID`.
-
-### 1 · Crear el token y los tres secretos de GitHub *(una vez)*
-
-El token: Cloudflare → *My Profile* → *API Tokens* → *Create Token*, con
-`Account · Workers Scripts · Edit` y `Zone · Workers Routes · Edit` (sobre la
-zona `velty.cl`).
-
-### 2 · Primer push — despliegue inicial
-
-Cualquier push a `main` dispara la Action. `goflare deploy` crea el Worker,
-sube el script y adjunta el binding D1 y el dominio — no hace falta crear
-nada a mano en el panel de Cloudflare primero.
-
-### 3 · Cargar las seis variables de ejecución como Secret *(una vez)*
-
-Ver tabla arriba.
-
-### 3b · Cabeceras de seguridad para los assets estáticos *(una vez)*
-
-El Worker emite las seis cabeceras de seguridad (`routes/headers.go`) solo
-en sus propias respuestas; el HTML del shell del panel lo sirve Cloudflare
-directamente y no las lleva (ver `docs/ARCHITECTURE.md` §8.8). Configuralas
-en Cloudflare (Transform Rules → Modify Response Header, o un archivo
-`_headers` en `web/public/`) con los mismos valores:
+El Worker emite las cabeceras de seguridad en sus respuestas (`SecurityHeaders`). El HTML
+estático del shell del panel servido por Cloudflare debe llevar los mismos valores
+(configurados en Cloudflare Transform Rules o `_headers`):
 
 | Cabecera | Valor |
 |---|---|
@@ -98,26 +71,12 @@ en Cloudflare (Transform Rules → Modify Response Header, o un archivo
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains` |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` |
 
-### 4 · Verificación
+## Verificación
 
 ```bash
 curl https://iam.velty.cl/api/health
 # → {"ok":true}
 ```
 
-### 5 · De aquí en adelante: nada manual
-
-Cada push a `main` corre `go vet`, los tests, la migración de esquema D1
-(`go run ./cmd/migrate`) y `goflare deploy`. La migración se ejecuta antes del
-despliegue del Worker para asegurar que el esquema de base de datos esté
-actualizado. Si los tests o la migración fallan **no se despliega**.
-
-## Diagnóstico
-
-| Síntoma | Causa |
-|---|---|
-| `Error: AccountID is required` | falta `CLOUDFLARE_ACCOUNT_ID` en GitHub Secrets |
-| `This Worker does not exist on your account` al atar el dominio | el Worker todavía no se desplegó — el primer `goflare deploy` lo crea y lo ata en el mismo paso; no hay que atar el dominio a mano antes |
-| El despliegue pasa pero `iam` no arranca | faltan una o más de las 6 variables de ejecución (paso 3) |
-| El login falla con `redirect_uri_mismatch` | `GOOGLE_REDIRECT_URL` no coincide con la registrada en Google Cloud Console |
-| Un consumidor recibe 403 en `/api/token` | `client_secret` incorrecto, proyecto no registrado o desactivado desde el panel — ver `config.CreateProject` |
+Cada push a `main` ejecuta `gotest`, la migración de esquema D1 (`go run ./cmd/migrate`)
+y `goflare deploy`.

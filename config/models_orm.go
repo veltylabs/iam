@@ -10,7 +10,7 @@ import (
 type Project struct {
 	Id string
 	Name string
-	ClientSecretHash string
+	ClientPublicKey string
 	CreatedAt int64
 	Active int64
 }
@@ -19,14 +19,14 @@ func (m *Project) ModelName() string { return "project" }
 
 func (m *Project) Schema() []model.Field { return ProjectModel.Fields }
 
-func (m *Project) Pointers() []any { return []any{&m.Id, &m.Name, &m.ClientSecretHash, &m.CreatedAt, &m.Active} }
+func (m *Project) Pointers() []any { return []any{&m.Id, &m.Name, &m.ClientPublicKey, &m.CreatedAt, &m.Active} }
 
 func (m *Project) IsNil() bool { return m == nil }
 
 func (m *Project) EncodeFields(w model.FieldWriter) {
 	w.String("id", m.Id)
 	w.String("name", m.Name)
-	w.String("client_secret_hash", m.ClientSecretHash)
+	w.String("client_public_key", m.ClientPublicKey)
 	w.Int("created_at", m.CreatedAt)
 	w.Int("active", m.Active)
 }
@@ -34,7 +34,7 @@ func (m *Project) EncodeFields(w model.FieldWriter) {
 func (m *Project) DecodeFields(r model.FieldReader) {
 	if v, ok := r.String("id"); ok { m.Id = v }
 	if v, ok := r.String("name"); ok { m.Name = v }
-	if v, ok := r.String("client_secret_hash"); ok { m.ClientSecretHash = v }
+	if v, ok := r.String("client_public_key"); ok { m.ClientPublicKey = v }
 	if v, ok := r.Int("created_at"); ok { m.CreatedAt = v }
 	if v, ok := r.Int("active"); ok { m.Active = v }
 }
@@ -55,13 +55,13 @@ func (m *Project) Validate(action byte) error {
 var Project_ = struct {
 	Id string
 	Name string
-	ClientSecretHash string
+	ClientPublicKey string
 	CreatedAt string
 	Active string
 }{
 	Id: "id",
 	Name: "name",
-	ClientSecretHash: "client_secret_hash",
+	ClientPublicKey: "client_public_key",
 	CreatedAt: "created_at",
 	Active: "active",
 }

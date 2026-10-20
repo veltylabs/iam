@@ -8,15 +8,17 @@ import (
 	"webtyp.com/auth/local"
 	"webtyp.com/auth/oauth2"
 	googlemock "webtyp.com/auth/oauth2/provider/google/mock"
+	"webtyp.com/auth/passkey"
+	"webtyp.com/auth/session/cookie"
 	"webtyp.com/model"
 	"webtyp.com/orm"
 	"webtyp.com/rbac"
 	"webtyp.com/user"
+	"webtyp.com/webauthn/server"
 )
 
 // LocalScenarios son identidades de desarrollo determinísticas para probar
-// iam en aislamiento, sin secretos de Google. Sin roles asignados: cada
-// test decide qué rol/permiso probar (ver bootstrap_test.go).
+// iam en aislamiento, sin secretos de Google.
 var LocalScenarios = []local.Scenario{
 	{ID: user.SubjectID("local-admin"), Name: "Admin Local", Email: "admin@iam.local"},
 	{ID: user.SubjectID("local-viewer"), Name: "Viewer Local", Email: "viewer@iam.local"},
@@ -31,31 +33,51 @@ func NewLocalAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *rbac.S
 func NewLocalAuthWithScenarios(db *orm.DB, ids model.IDGenerator, scenarios []local.Scenario) (*authority.Module, *rbac.Service, error) {
 	authMod, err := authority.New(db, auth.Config{
 		IDs:        ids,
-		CookieName: CookieSession,
-		TokenTTL:   TTLSession,
 		TrustProxy: true,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
+
 	rbacSvc, err := rbac.New(db)
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, sc := range scenarios {
-		if _, err := authMod.GetOrCreateSubject(sc.ID, sc.Email, sc.Name, sc.Avatar); err != nil {
-			return nil, nil, err
-		}
-	}
-	// El mock simula a Google, que siempre entrega emails verificados: sin
-	// EmailVerified el flujo nuevo de auth rechaza el login cuando el email
-	// ya existe (protección anti-takeover) y el escenario local no entraría.
-	mockUser := auth.OAuthUserInfo{ID: string(scenarios[0].ID), Email: scenarios[0].Email, Name: scenarios[0].Name, Avatar: scenarios[0].Avatar, EmailVerified: true}
-	mockProv := &googlemock.MockProvider{User: mockUser}
-	authMod.Enable(oauth2.New(authMod, authMod, authMod, []auth.OAuthProvider{mockProv},
+
+	authMod.Enable(oauth2.New(authMod, authMod, authMod,
+		[]auth.OAuthProvider{&googlemock.MockProvider{User: auth.OAuthUserInfo{ID: "local-admin", Email: "admin@iam.local", Name: "Admin Local"}}},
 		oauth2.WithRedirectValidator(isVeltyDomain),
 	))
 	loc := local.New(scenarios, authMod, authMod, local.WithAfterLogin("/"))
 	authMod.Enable(loc)
+
+	sso, err := cookie.New(authMod, cookie.Options{
+		Name:       CookieSession,
+		Domain:     SSOCookieDomain,
+		Policy:     auth.SessionPolicy{Absolute: SSOSessionAbsolute, Idle: SSOSessionIdle, Assurance: model.AssuranceSingleFactor},
+		TrustProxy: true,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	authMod.SetStrategy(sso)
+
+	stepUp, err := cookie.New(authMod, cookie.Options{
+		Name:       CookieAdmin,
+		Policy:     auth.SessionPolicy{Absolute: AdminSessionAbsolute, Idle: AdminSessionIdle, Assurance: model.AssuranceMultiFactor},
+		TrustProxy: true,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	authMod.SetStepUpStrategy(stepUp)
+
+	rp := server.RelyingParty{ID: OriginHost(LocalPanelOrigin), Origin: LocalPanelOrigin}
+	pk, err := passkey.New(db, ids, authMod, rp)
+	if err != nil {
+		return nil, nil, err
+	}
+	authMod.Enable(pk)
+
 	return authMod, rbacSvc, nil
 }

@@ -17,6 +17,8 @@ const (
 	AuditRoleSetTTL        = "role.set_ttl"
 	AuditUserAssign        = "user.assign_role"
 	AuditUserRevoke        = "user.revoke_role"
+	AuditRoleGrantedByClient     = "client.assign_role"
+	AuditIdentityCreatedByClient = "client.create_identity"
 
 	AuditPanelDenied  = "panel.access_denied"  // sesión válida, email fuera de IAM_ADMIN_EMAILS
 	AuditOriginDenied = "panel.origin_denied"  // mutación desde un origen ajeno

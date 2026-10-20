@@ -16,7 +16,7 @@ import (
 func TestAssignRoleUnknownCode404(t *testing.T) {
 	backend := setupBackend(t)
 	const projectID = "proj-assign-404"
-	if err := config.CreateProject(backend.DB, projectID, "Proj Assign 404", "secret-404"); err != nil {
+	if err := config.CreateProject(backend.DB, projectID, "Proj Assign 404", ""); err != nil {
 		t.Fatalf("CreateProject: %v", err)
 	}
 	u, err := backend.Auth.CreateUser("unknown404@test.com", "Unknown404", "")
@@ -24,12 +24,13 @@ func TestAssignRoleUnknownCode404(t *testing.T) {
 		t.Fatalf("CreateUser: %v", err)
 	}
 
-	handler := config.AssignRole(backend.DB, backend.RBAC)
+	handler := config.AssignRole(backend.DB, backend.RBAC, backend.IDs)
 	call := func(roleCode string) int {
 		ctx := &mock.Context{}
+		ctx.SetUserID(projectID)
 		var out []byte
 		if err := json.Encode(&config.AssignRoleRequest{
-			ProjectID: projectID, ClientSecret: "secret-404", UserID: u.Id, RoleCode: roleCode,
+			UserID: u.Id, RoleCode: roleCode,
 		}, &out); err != nil {
 			t.Fatalf("encode: %v", err)
 		}

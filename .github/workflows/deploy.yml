@@ -20,9 +20,9 @@ jobs:
     # hereda el entorno del job de forma fiable; el `env:` del paso que la
     # invoca no siempre llega a sus pasos internos.
     env:
-      D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WASM_MAX_SIZE_KIB: 2048
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
       #
       # Solo despliega en push a main: en un pull request compila y prueba, que
       # es justo lo que se quiere revisar antes de mezclar.
-      - uses: tinywasm/goflare@v1
+      - uses: webtyp/goflare@v1
         with:
           worker: iam
           domain: iam.velty.cl

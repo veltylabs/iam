@@ -2,10 +2,8 @@ package config
 
 import (
 	"webtyp.com/base64"
-	"webtyp.com/crypto/hmac"
-	"webtyp.com/crypto/rand"
+	"webtyp.com/crypto/asym"
 	"webtyp.com/ddl"
-	"webtyp.com/env"
 	"webtyp.com/fmt"
 	"webtyp.com/orm"
 	"webtyp.com/storage"
@@ -29,50 +27,15 @@ func IsProjectNotFound(err error) bool {
 	return ok
 }
 
-// ErrMissingJWTSecret: sin JWT_SECRET no hay clave con la que derivar el
-// hash de un client_secret. HMAC sobre una clave vacía es matemática válida:
-// produce un hash que verifica, con una clave que cualquiera puede derivar.
-// Fallar es la única respuesta correcta — misma decisión que jwt.ErrEmptySecret.
-var ErrMissingJWTSecret = fmt.Err("JWT_SECRET", "required")
+type projectInactive struct{}
 
-const clientSecretPrefix = "iam_sk_"
+func (projectInactive) Error() string { return "project inactive or key not set" }
 
-// clientSecretBytes es la entropía de un client_secret recién generado.
-const clientSecretBytes = 30
+var ErrProjectInactive error = projectInactive{}
 
-// projectSecretKeyLabel separa la clave que hashea client_secret de la que
-// firma JWT. Reutilizar una sola clave para dos propositos hace que un fallo en
-// uno comprometa el otro; derivar cuesta un HMAC y elimina el acoplamiento.
-// El sufijo de version permite rotar el esquema sin ambiguedad.
-const projectSecretKeyLabel = "iam:project-secret:v1"
-
-func projectSecretKey() ([]byte, error) {
-	secret := env.Get(EnvJWTSecret)
-	if secret == "" {
-		return nil, ErrMissingJWTSecret
-	}
-	return hmac.HMACSHA256([]byte(secret), []byte(projectSecretKeyLabel)), nil
-}
-
-// hashProjectSecret deriva el hash almacenable de un client_secret. Es HMAC,
-// sin factor de costo, a proposito: un client_secret es aleatorio y de alta
-// entropia, asi que no hay nada que frenar ahi — solo CPU que quemar, y en un
-// Worker eso se paga en cada peticion contra un limite de 10 ms.
-func hashProjectSecret(plainSecret string) (string, error) {
-	key, err := projectSecretKey()
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncode(hmac.HMACSHA256(key, []byte(plainSecret))), nil
-}
-
-// GenerateClientSecret genera 30 bytes aleatorios en base64 url-safe con prefijo reconocible.
-func GenerateClientSecret() (string, error) {
-	secret, err := rand.SecretN(clientSecretBytes)
-	if err != nil {
-		return "", err
-	}
-	return clientSecretPrefix + secret, nil
+func IsProjectInactive(err error) bool {
+	_, ok := err.(projectInactive)
+	return ok
 }
 
 // MigrateSchema reconciles the schema this service owns (Project and AuditEntry).
@@ -89,25 +52,46 @@ func MigrateSchema(conn ddl.Execer, ddlCompiler ddl.Compiler) error {
 	if err := d.Sync(&AuditEntry{}); err != nil {
 		return err
 	}
-	// Filas previas a la columna active se consideran activas; tras esto active = 0 = desactivado a mano.
 	return conn.Exec("UPDATE project SET active = 1 WHERE active IS NULL OR active = 0")
 }
 
-// CreateProject registra un proyecto nuevo y devuelve el client_secret EN
-// CLARO una sola vez — no se puede recuperar después, solo regenerar.
-func CreateProject(db *orm.DB, id, name, plainSecret string) error {
-	hash, err := hashProjectSecret(plainSecret)
+func validatePublicKey(publicKeyB64 string) ([]byte, error) {
+	if publicKeyB64 == "" {
+		return nil, fmt.Err("project key cannot be empty")
+	}
+	keyBytes, err := base64.URLDecode(publicKeyB64)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	if _, err := asym.VerifyCompact([]byte("probe"), make([]byte, 64), keyBytes); err != nil {
+		return nil, err
+	}
+	return keyBytes, nil
+}
+
+// CreateProject registra un proyecto nuevo. Si publicKeyB64 no está vacío,
+// valida que sea un SPKI P-256 codificado en base64url.
+func CreateProject(db *orm.DB, id, name, publicKeyB64 string) error {
+	if publicKeyB64 != "" {
+		if _, err := validatePublicKey(publicKeyB64); err != nil {
+			return err
+		}
 	}
 	return db.Create(&Project{
-		Id: id, Name: name, ClientSecretHash: hash,
-		CreatedAt: time.Now() / 1e9, Active: 1,
+		Id:              id,
+		Name:            name,
+		ClientPublicKey: publicKeyB64,
+		CreatedAt:       time.Now() / 1e9,
+		Active:          1,
 	})
 }
 
-// RegenerateProjectSecret actualiza el hash; el secreto anterior deja de validar de inmediato.
-func RegenerateProjectSecret(db *orm.DB, projectID, newPlainSecret string) error {
+// SetProjectKey registers (or replaces) a project's public key. It refuses a
+// key that is not base64url of a P-256 SPKI.
+func SetProjectKey(db *orm.DB, projectID, publicKeyB64 string) error {
+	if _, err := validatePublicKey(publicKeyB64); err != nil {
+		return err
+	}
 	qb := db.Query(&Project{}).Where(Project_.Id).Eq(projectID)
 	rows, err := ReadAllProject(qb)
 	if err != nil {
@@ -116,12 +100,8 @@ func RegenerateProjectSecret(db *orm.DB, projectID, newPlainSecret string) error
 	if len(rows) == 0 {
 		return ErrProjectNotFound
 	}
-	hash, err := hashProjectSecret(newPlainSecret)
-	if err != nil {
-		return err
-	}
 	proj := rows[0]
-	proj.ClientSecretHash = hash
+	proj.ClientPublicKey = publicKeyB64
 	return db.Update(proj, storage.Eq(Project_.Id, projectID))
 }
 
@@ -150,29 +130,33 @@ func ListProjects(db *orm.DB) (ProjectList, error) {
 	return ReadAllProject(qb)
 }
 
-// VerifyProjectSecret compara en tiempo constante vía HMAC SHA256 — nunca ==.
-// Un error de clave faltante sale por el canal de error (→ 500), nunca como
-// false, nil (→ 403): un 403 le dice al llamador "tu secreto está mal" cuando
-// el problema es del servidor.
-func VerifyProjectSecret(db *orm.DB, projectID, plainSecret string) (bool, error) {
-	qb := db.Query(&Project{}).Where(Project_.Id).Eq(projectID)
+// ProjectKeys implements clientassertion.ClientKeys for machine client assertions.
+type ProjectKeys struct {
+	DB *orm.DB
+}
+
+// ClientPublicKey implements clientassertion.ClientKeys: active project with a
+// non-empty key → decoded SPKI; otherwise an error (IsProjectNotFound for
+// unknown ids, a typed inactive error otherwise).
+func (k ProjectKeys) ClientPublicKey(clientID string) ([]byte, error) {
+	if k.DB == nil {
+		return nil, ErrProjectNotFound
+	}
+	qb := k.DB.Query(&Project{}).Where(Project_.Id).Eq(clientID)
 	rows, err := ReadAllProject(qb)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	if len(rows) == 0 {
-		return false, nil
+		return nil, ErrProjectNotFound
 	}
-	if rows[0].Active == 0 {
-		return false, nil
+	proj := rows[0]
+	if proj.Active == 0 || proj.ClientPublicKey == "" {
+		return nil, ErrProjectInactive
 	}
-	stored, err := base64.URLDecode(rows[0].ClientSecretHash)
+	keyBytes, err := base64.URLDecode(proj.ClientPublicKey)
 	if err != nil {
-		return false, nil
+		return nil, ErrProjectInactive
 	}
-	key, err := projectSecretKey()
-	if err != nil {
-		return false, err
-	}
-	return hmac.HMACEqual(stored, hmac.HMACSHA256(key, []byte(plainSecret))), nil
+	return keyBytes, nil
 }

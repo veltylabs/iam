@@ -2,6 +2,7 @@ package config
 
 import (
 	"webtyp.com/auth/authority"
+	"webtyp.com/auth/passkey"
 	"webtyp.com/fmt"
 	"webtyp.com/model"
 	"webtyp.com/orm"
@@ -9,15 +10,21 @@ import (
 	"webtyp.com/router"
 )
 
-// RequirePanelAdmin envuelve un handler: 401 sin sesión, 403 si el correo de
-// la sesión no está en adminEmails. En el camino feliz pasa el correo del
-// admin al handler (para auditoría). La denegación también se audita
-// (panel.access_denied) con el email de quien intentó entrar.
-func RequirePanelAdmin(db *orm.DB, ids model.IDGenerator, authMod *authority.Module, adminEmails []string, h func(ctx router.Context, adminEmail string)) router.HandlerFunc {
+func adminEmailOf(authMod *authority.Module, ctx router.Context) string {
+	if uid := ctx.UserID(); uid != "" {
+		if u, err := authMod.GetUser(uid); err == nil {
+			return u.Email
+		}
+	}
+	return ""
+}
+
+// Me responde con datos del administrador actual.
+func Me(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service) router.HandlerFunc {
 	return func(ctx router.Context) {
 		uid := ctx.UserID()
 		if uid == "" {
-			ctx.WriteStatus(401)
+			ctx.WriteStatus(403)
 			return
 		}
 		u, err := authMod.GetUser(uid)
@@ -25,36 +32,29 @@ func RequirePanelAdmin(db *orm.DB, ids model.IDGenerator, authMod *authority.Mod
 			ctx.WriteStatus(500)
 			return
 		}
-		if !IsPanelAdmin(u.Email, adminEmails) {
-			if err := RecordAudit(db, ids, u.Email, AuditPanelDenied, u.Email, ""); err != nil {
-				fmt.Println("audit:", err)
-			}
-			ctx.WriteStatus(403)
-			return
-		}
-		h(ctx, u.Email)
-	}
-}
 
-// Me responde con datos del administrador actual.
-func Me(authMod *authority.Module) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
-		u, err := authMod.GetUser(ctx.UserID())
-		if err != nil {
-			ctx.WriteStatus(500)
-			return
-		}
+		isAdmin := rbacSvc.Can(IAMProjectID, uid, ResourceProject, model.Read)
+
+		qb := db.Query(&passkey.PasskeyCredential{}).Where(passkey.PasskeyCredential_.UserId).Eq(uid)
+		creds, err := passkey.ReadAllPasskeyCredential(qb)
+		hasPasskey := err == nil && len(creds) > 0
+
+		multiFactor := ctx.Assurance() == model.AssuranceMultiFactor
+
 		ctx.WriteStatus(200)
 		_ = ctx.Encode(&AdminMeResponse{
-			Email: adminEmail,
-			Name:  u.Name,
+			Email:       u.Email,
+			Name:        u.Name,
+			IsAdmin:     isAdmin,
+			HasPasskey:  hasPasskey,
+			MultiFactor: multiFactor,
 		})
 	}
 }
 
 // ListProjectsHandler lista todos los proyectos.
-func ListProjectsHandler(db *orm.DB) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func ListProjectsHandler(db *orm.DB) router.HandlerFunc {
+	return func(ctx router.Context) {
 		projects, err := ListProjects(db)
 		if err != nil {
 			ctx.WriteStatus(500)
@@ -74,70 +74,63 @@ func ListProjectsHandler(db *orm.DB) func(ctx router.Context, adminEmail string)
 	}
 }
 
-// CreateProjectHandler crea un nuevo proyecto y devuelve su client_secret en claro.
-func CreateProjectHandler(db *orm.DB, ids model.IDGenerator) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+// CreateProjectHandler crea un nuevo proyecto.
+func CreateProjectHandler(db *orm.DB, ids model.IDGenerator, authMod *authority.Module, rbacSvc *rbac.Service) router.HandlerFunc {
+	return func(ctx router.Context) {
 		var req AdminCreateProjectRequest
 		if err := ctx.Decode(&req); err != nil || fmt.TrimSpace(req.Name) == "" {
 			ctx.WriteStatus(400)
 			return
 		}
 		id := ids.NewID()
-		secret, err := GenerateClientSecret()
-		if err != nil {
-			ctx.WriteStatus(500)
+		if err := CreateProject(db, id, req.Name, req.PublicKey); err != nil {
+			ctx.WriteStatus(400)
 			return
 		}
-		if err := CreateProject(db, id, req.Name, secret); err != nil {
-			ctx.WriteStatus(500)
-			return
-		}
+
+		_ = rbacSvc.AssignRoleByCode(IAMProjectID, id, RoleIAMClient)
+
+		adminEmail := adminEmailOf(authMod, ctx)
 		if err := RecordAudit(db, ids, adminEmail, AuditProjectCreate, id, req.Name); err != nil {
 			fmt.Println("audit:", err)
 		}
 		ctx.WriteStatus(201)
-		_ = ctx.Encode(&AdminSecretResponse{
-			Id:           id,
-			ClientSecret: secret,
+		_ = ctx.Encode(&AdminProjectIDRequest{
+			ProjectId: id,
 		})
 	}
 }
 
-// RotateSecretHandler regenera el client_secret de un proyecto.
-func RotateSecretHandler(db *orm.DB, ids model.IDGenerator) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
-		var req AdminProjectIDRequest
+// SetProjectKeyHandler replaces a project's public key.
+func SetProjectKeyHandler(db *orm.DB, ids model.IDGenerator, authMod *authority.Module) router.HandlerFunc {
+	return func(ctx router.Context) {
+		var req AdminProjectKeyRequest
 		if err := ctx.Decode(&req); err != nil || fmt.TrimSpace(req.ProjectId) == "" {
 			ctx.WriteStatus(400)
 			return
 		}
-		secret, err := GenerateClientSecret()
-		if err != nil {
-			ctx.WriteStatus(500)
-			return
-		}
-		if err := RegenerateProjectSecret(db, req.ProjectId, secret); err != nil {
+		if err := SetProjectKey(db, req.ProjectId, req.PublicKey); err != nil {
 			if IsProjectNotFound(err) {
 				ctx.WriteStatus(404)
 				return
 			}
-			ctx.WriteStatus(500)
+			ctx.WriteStatus(400)
 			return
 		}
+		adminEmail := adminEmailOf(authMod, ctx)
 		if err := RecordAudit(db, ids, adminEmail, AuditProjectRotate, req.ProjectId, ""); err != nil {
 			fmt.Println("audit:", err)
 		}
 		ctx.WriteStatus(200)
-		_ = ctx.Encode(&AdminSecretResponse{
-			Id:           req.ProjectId,
-			ClientSecret: secret,
+		_ = ctx.Encode(&AdminProjectIDRequest{
+			ProjectId: req.ProjectId,
 		})
 	}
 }
 
 // SetActiveHandler activa o desactiva un proyecto.
-func SetActiveHandler(db *orm.DB, ids model.IDGenerator) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func SetActiveHandler(db *orm.DB, ids model.IDGenerator, authMod *authority.Module) router.HandlerFunc {
+	return func(ctx router.Context) {
 		var req AdminSetActiveRequest
 		if err := ctx.Decode(&req); err != nil || fmt.TrimSpace(req.ProjectId) == "" {
 			ctx.WriteStatus(400)
@@ -155,6 +148,7 @@ func SetActiveHandler(db *orm.DB, ids model.IDGenerator) func(ctx router.Context
 		if !req.Active {
 			action = AuditProjectDeactivate
 		}
+		adminEmail := adminEmailOf(authMod, ctx)
 		if err := RecordAudit(db, ids, adminEmail, action, req.ProjectId, ""); err != nil {
 			fmt.Println("audit:", err)
 		}
@@ -164,8 +158,8 @@ func SetActiveHandler(db *orm.DB, ids model.IDGenerator) func(ctx router.Context
 }
 
 // ListRolesHandler lista los roles de un proyecto dado por query param ?project_id=.
-func ListRolesHandler(db *orm.DB, rbacSvc *rbac.Service) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func ListRolesHandler(db *orm.DB, rbacSvc *rbac.Service) router.HandlerFunc {
+	return func(ctx router.Context) {
 		projectID, ok := router.QueryParam(ctx.Path(), "project_id")
 		if !ok || fmt.TrimSpace(projectID) == "" {
 			ctx.WriteStatus(400)
@@ -182,8 +176,8 @@ func ListRolesHandler(db *orm.DB, rbacSvc *rbac.Service) func(ctx router.Context
 }
 
 // CreateRoleHandler crea un rol dentro de un proyecto.
-func CreateRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func CreateRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator, authMod *authority.Module) router.HandlerFunc {
+	return func(ctx router.Context) {
 		var req AdminCreateRoleRequest
 		if err := ctx.Decode(&req); err != nil || fmt.TrimSpace(req.ProjectId) == "" || fmt.TrimSpace(req.Code) == "" {
 			ctx.WriteStatus(400)
@@ -199,6 +193,7 @@ func CreateRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 			return
 		}
 		target := req.ProjectId + "/" + req.Code
+		adminEmail := adminEmailOf(authMod, ctx)
 		if err := RecordAudit(db, ids, adminEmail, AuditRoleCreate, target, req.Name); err != nil {
 			fmt.Println("audit:", err)
 		}
@@ -208,8 +203,8 @@ func CreateRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 }
 
 // SetRoleTTLHandler actualiza el SessionTTL de un rol.
-func SetRoleTTLHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func SetRoleTTLHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator, authMod *authority.Module) router.HandlerFunc {
+	return func(ctx router.Context) {
 		var req AdminRoleTTLRequest
 		if err := ctx.Decode(&req); err != nil || fmt.TrimSpace(req.ProjectId) == "" || fmt.TrimSpace(req.Code) == "" {
 			ctx.WriteStatus(400)
@@ -230,6 +225,7 @@ func SetRoleTTLHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 		}
 		target := req.ProjectId + "/" + req.Code
 		detail := fmt.Sprintf("%d", req.SessionTtl)
+		adminEmail := adminEmailOf(authMod, ctx)
 		if err := RecordAudit(db, ids, adminEmail, AuditRoleSetTTL, target, detail); err != nil {
 			fmt.Println("audit:", err)
 		}
@@ -239,8 +235,8 @@ func SetRoleTTLHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 }
 
 // DeleteRoleHandler elimina un rol de un proyecto.
-func DeleteRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func DeleteRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator, authMod *authority.Module) router.HandlerFunc {
+	return func(ctx router.Context) {
 		var req AdminRoleRefRequest
 		if err := ctx.Decode(&req); err != nil || fmt.TrimSpace(req.ProjectId) == "" || fmt.TrimSpace(req.Code) == "" {
 			ctx.WriteStatus(400)
@@ -255,6 +251,7 @@ func DeleteRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 			return
 		}
 		target := req.ProjectId + "/" + req.Code
+		adminEmail := adminEmailOf(authMod, ctx)
 		if err := RecordAudit(db, ids, adminEmail, AuditRoleDelete, target, ""); err != nil {
 			fmt.Println("audit:", err)
 		}
@@ -264,8 +261,8 @@ func DeleteRoleHandler(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator)
 }
 
 // ListRoleUsersHandler lista usuarios asignados a un rol (?project_id=&code=).
-func ListRoleUsersHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func ListRoleUsersHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service) router.HandlerFunc {
+	return func(ctx router.Context) {
 		projectID, ok := router.QueryParam(ctx.Path(), "project_id")
 		if !ok || fmt.TrimSpace(projectID) == "" {
 			ctx.WriteStatus(400)
@@ -291,8 +288,8 @@ func ListRoleUsersHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.S
 }
 
 // AssignUserHandler asigna un rol a un usuario por email (lo crea si no existe).
-func AssignUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, ids model.IDGenerator) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func AssignUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, ids model.IDGenerator) router.HandlerFunc {
+	return func(ctx router.Context) {
 		var req AdminUserRoleRequest
 		if err := ctx.Decode(&req); err != nil || fmt.TrimSpace(req.ProjectId) == "" || fmt.TrimSpace(req.Code) == "" || fmt.TrimSpace(req.Email) == "" {
 			ctx.WriteStatus(400)
@@ -315,6 +312,7 @@ func AssignUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Serv
 			return
 		}
 		target := req.ProjectId + "/" + req.Code
+		adminEmail := adminEmailOf(authMod, ctx)
 		if err := RecordAudit(db, ids, adminEmail, AuditUserAssign, target, req.Email); err != nil {
 			fmt.Println("audit:", err)
 		}
@@ -324,8 +322,8 @@ func AssignUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Serv
 }
 
 // RevokeUserHandler revoca un rol a un usuario.
-func RevokeUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, ids model.IDGenerator) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func RevokeUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, ids model.IDGenerator) router.HandlerFunc {
+	return func(ctx router.Context) {
 		var req AdminUserRoleRequest
 		if err := ctx.Decode(&req); err != nil || fmt.TrimSpace(req.ProjectId) == "" || fmt.TrimSpace(req.Code) == "" || fmt.TrimSpace(req.Email) == "" {
 			ctx.WriteStatus(400)
@@ -345,6 +343,7 @@ func RevokeUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Serv
 			return
 		}
 		target := req.ProjectId + "/" + req.Code
+		adminEmail := adminEmailOf(authMod, ctx)
 		if err := RecordAudit(db, ids, adminEmail, AuditUserRevoke, target, req.Email); err != nil {
 			fmt.Println("audit:", err)
 		}
@@ -354,8 +353,8 @@ func RevokeUserHandler(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Serv
 }
 
 // ListAuditHandler lista las entradas del registro de auditoría.
-func ListAuditHandler(db *orm.DB) func(ctx router.Context, adminEmail string) {
-	return func(ctx router.Context, adminEmail string) {
+func ListAuditHandler(db *orm.DB) router.HandlerFunc {
+	return func(ctx router.Context) {
 		entries, err := ListAudit(db, 200)
 		if err != nil {
 			ctx.WriteStatus(500)
@@ -375,4 +374,3 @@ func ListAuditHandler(db *orm.DB) func(ctx router.Context, adminEmail string) {
 		_ = ctx.Encode(&AdminAuditResponse{Entries: views})
 	}
 }
-

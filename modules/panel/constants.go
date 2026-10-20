@@ -25,7 +25,6 @@ const (
 const (
 	IDProjectsList   = "iam-projects-list"
 	IDProjectsNew    = "iam-projects-new"
-	IDProjectsSecret = "iam-projects-secret" // bloque destacado del secreto
 	IDRolesProject   = "iam-roles-project"
 	IDRolesList      = "iam-roles-list"
 	IDRolesNew       = "iam-roles-new"

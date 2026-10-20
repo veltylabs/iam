@@ -42,14 +42,19 @@ Diseño: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 `webtyp/auth` + `webtyp/rbac` — no reimplementa autenticación ni
 autorización, las ensambla. Su contenido legítimo:
 
-- `config/` — construcción del motor (auth+rbac), DTOs de cable, helpers de dominio. **Hoja: no importa nada de `veltylabs/iam/`.**
-- `routes/` — `func Register(r router.Router, deps …)` en `routes/routes.go` (un solo archivo, una sola tabla).
-- `modules/admin/*.go` — handlers server-side (`backend.go`, `handler.go`), sin subcarpetas.
-- `modules/panel/*.go` (`//go:build wasm`) — frontend del panel de administración (`view.go` contiene todas las funciones `buildXxxView`/`xxxView`; interactividad en archivos por área). `routes/` **nunca** lo importa.
+- `config/` — construcción del motor (auth+rbac), DTOs de cable, helpers de dominio. `config/routes.go` contiene la tabla completa de rutas (`func RegisterRoutes`). `config/server.go` (`//go:build !wasm`) contiene el servidor de desarrollo local (`RunServer`). Hoja: no importa nada de `veltylabs/iam/`.
+- `modules/panel/*.go` (`//go:build wasm`) — frontend del panel de administración (`view.go` contiene todas las funciones `buildXxxView`/`xxxView`; interactividad en archivos por área). No hay `modules/admin/`.
+- `client/` — SDK de consumo (`Consumer`) usando assertions RFC 7523 (`private_key_jwt`).
+- `cmd/keygen/` (`//go:build !wasm`) — generador de llaves P-256 para consumidores.
 - `web/client.go` (`//go:build wasm`) — punto de entrada del panel (solo `main`).
-- `web/server.go` (`//go:build !wasm`) — servidor de desarrollo local.
+- `web/server.go` (`//go:build !wasm`) — delega en `config.RunServer()`.
 - `edge/main.go` (`//go:build wasm`) — punto de entrada del Worker.
 - `docs/`, `tests/`.
+
+Reglas de acceso en rutas:
+- Solo `PathHealth` (`GET /api/health`) es `.Public()`.
+- Cada ruta administrativa (`/api/admin/*`, excepto `me`, más `/_routes` y `/api/health/db`) declara `.RequiresMFA()`.
+- El test de inventario público (`TestInventory_PublicRoutes`) es el gate para cualquier nueva ruta pública.
 
 **Nada más.** Si aparece una regla de negocio que no sea "identidad,
 proyecto o rol", no vive aquí — la autorización fina de cada app

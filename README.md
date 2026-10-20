@@ -39,8 +39,22 @@ r := edge.NewRouter(edge.Config{
 `iam` entrega códigos de rol (`Scope`); el proyecto entrega la política.
 `Consumer.AssignRole` concede un rol en el proyecto del `Consumer` y es
 idempotente (un `roleCode` inexistente devuelve error: los roles se definen
-en el panel, no desde los consumidores). Los proyectos y sus `client_secret`
-se administran desde el panel propio (`/` en `iam.velty.cl`).
+en el panel, no desde los consumidores). Los proyectos y sus claves públicas
+se administran desde el panel propio (`/` en `iam.velty.cl`). Las aplicaciones
+consumidoras autentican sus llamadas máquina-a-máquina mediante `private_key_jwt`
+(RFC 7523) usando `IAM_CLIENT_PRIVATE_KEY`.
+
+## Variables de entorno
+
+| Variable | Dónde | Qué es |
+|---|---|---|
+| `GOOGLE_CLIENT_ID` | Worker (Secret) | Client ID de Google OAuth |
+| `GOOGLE_CLIENT_SECRET` | Worker (Secret) | Client Secret de Google OAuth |
+| `GOOGLE_REDIRECT_URL` | Worker (Var) | URL de callback (`https://iam.velty.cl/oauth/callback/google`) |
+| `JWT_SECRET` | Worker (Secret) | Secreto para firma de tokens de autorización |
+| `IAM_PANEL_ORIGIN` | Worker (Var) | Origen del panel (`https://iam.velty.cl`) |
+| `IAM_ADMIN_EMAILS` | Worker (Secret) | Correos semilla con rol `iam_admin` |
+| `IAM_CLIENT_PRIVATE_KEY` | Consumidor (Secret) | Clave privada P-256 para aserciones RFC 7523 del consumidor |
 
 ## Desarrollo local (sin credenciales)
 
@@ -56,19 +70,14 @@ GOOS=js GOARCH=wasm go build ./edge/ ./web/   # compuerta TinyGo
 Abrí http://localhost:8080 y entrá con la identidad local
 (`admin@iam.local` — ya es administradora del panel, sin configurar
 `IAM_ADMIN_EMAILS`). El origen del panel en local es
-`http://localhost:8080` por defecto. Verificado: `/api/health` y
-`/api/health/db` responden `{"ok":true}`, `/api/admin/me` sin sesión da
-401, y las respuestas llevan las seis cabeceras de seguridad.
+`http://localhost:8080` por defecto. Verificado: `/api/health`
+responde `{"ok":true}`, `/api/admin/me` sin sesión da
+403, y las respuestas llevan las seis cabeceras de seguridad.
 
-## Publicar (con credenciales reales)
+## Publicar
 
-Checklist única y ordenada en [docs/DEPLOY.md](docs/DEPLOY.md): 3 secrets
-de GitHub (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`,
-`D1_DATABASE_ID`), 6 variables de ejecución en Cloudflare (las 3 de
-Google, `JWT_SECRET`, `IAM_PANEL_ORIGIN`, `IAM_ADMIN_EMAILS`), cabeceras
-de seguridad para los assets estáticos (§3b), push a `main` y verificación
-con `curl`. Probá todo en local (sección anterior) antes de cargar las
-credenciales reales.
+Checklist única y guiada en [docs/DEPLOY.md](docs/DEPLOY.md) a través de la
+pestaña **DEPLOY** en la aplicación `webtyp` (declarada en `config/deploy.go`).
 
 ## Documentación
 

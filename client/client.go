@@ -1,18 +1,6 @@
-// Package client is what a project consuming iam remotely imports — a
-// thin server-to-server HTTP client for POST /api/token. It carries none
-// of iam's own ORM/auth machinery: a consumer's binary (including its WASM
-// edge build) never pulls in tinywasm/orm or tinywasm/rbac just to ask
-// "who is this user and what may they do in MY project".
-//
-// This client is called from the CONSUMER'S OWN SERVER, never from the
-// browser: client_secret must never reach a WASM/JS bundle a user can
-// inspect (see ARCHITECTURE.md §6.4/§7). The consumer's server reads the
-// SSO cookie off the incoming request and forwards its value here — it
-// never verifies or decodes that cookie itself, only iam can.
 package client
 
 import (
-	"webtyp.com/fetch"
 	"webtyp.com/fmt"
 	"webtyp.com/json"
 	tinyjwt "webtyp.com/jwt"
@@ -23,7 +11,7 @@ import (
 // across every *.velty.cl subdomain (Domain=".velty.cl", see
 // ARCHITECTURE.md §7). A consumer reads it off its OWN incoming request
 // (net/http-style cookie jar, or ctx.Cookie(SSOCookieName) in this
-// ecosystem's router.Context) and passes its value to FetchAuthzToken.
+// ecosystem's router.Context) and passes its value to fetchAuthzToken.
 const SSOCookieName = "iam_session"
 
 // ErrNoSSOSession means either no SSO cookie was forwarded, or iam
@@ -34,16 +22,16 @@ const SSOCookieName = "iam_session"
 var ErrNoSSOSession = fmt.Err("sso", "session-required")
 
 type tokenRequest struct {
-	ProjectID    string
-	ClientSecret string
+	SubjectToken string
 }
 
 func (t *tokenRequest) IsNil() bool { return t == nil }
 func (t *tokenRequest) EncodeFields(w model.FieldWriter) {
-	w.String("project_id", t.ProjectID)
-	w.String("client_secret", t.ClientSecret)
+	w.String("subject_token", t.SubjectToken)
 }
-func (t *tokenRequest) DecodeFields(r model.FieldReader) {}
+func (t *tokenRequest) DecodeFields(r model.FieldReader) {
+	t.SubjectToken, _ = r.String("subject_token")
+}
 
 type tokenResponse struct {
 	Token  string
@@ -61,7 +49,7 @@ func (t *tokenResponse) DecodeFields(r model.FieldReader) {
 	t.Avatar, _ = r.String("avatar")
 }
 
-// Identity is what FetchAuthzToken resolves for the caller's session: the
+// Identity is what fetchAuthzToken resolves for the caller's session: the
 // authorization claims (Sub/Aud/Scope) plus the profile fields iam's
 // /api/token response carries alongside them — a consumer showing "Hola,
 // <Name>" needs no second call.
@@ -72,36 +60,17 @@ type Identity struct {
 	Avatar string
 }
 
-// FetchAuthzToken calls POST <iamBaseURL>/api/token server-to-server,
-// forwarding ssoCookieValue (the SSO cookie's value read off the caller's
-// own incoming request) so iam can identify the user, and clientSecret so
-// iam knows which project is asking. Returns the project-scoped
-// authorization claims — Aud is projectID, Scope is the user's role codes
-// in that project (see ARCHITECTURE.md §6.1/§6.2) — plus the user's basic
-// profile.
-//
-// The claims are decoded WITHOUT verifying the HMAC signature
-// (tinyjwt.DecodeUnverified, not Verify): this response came directly from
-// iam over THIS SAME HTTPS call, not from an untrusted third party
-// presenting a token later — there is nothing to gain from re-checking a
-// signature whose secret this consumer does not, and must never, have
-// (ARCHITECTURE.md §6.2: the HS256 secret is internal to iam). Do not
-// change this to Verify — it would require sharing iam's secret, which is
-// exactly the acoplamiento this design avoids.
-func FetchAuthzToken(iamBaseURL, projectID, clientSecret, ssoCookieValue string) (Identity, error) {
+func (c *Consumer) fetchAuthzToken(ssoCookieValue string) (Identity, error) {
 	if ssoCookieValue == "" {
 		return Identity{}, ErrNoSSOSession
 	}
 
 	var body []byte
-	if err := json.Encode(&tokenRequest{ProjectID: projectID, ClientSecret: clientSecret}, &body); err != nil {
+	if err := json.Encode(&tokenRequest{SubjectToken: ssoCookieValue}, &body); err != nil {
 		return Identity{}, err
 	}
 
-	resp, err := doSync(fetch.Post(iamBaseURL+"/api/token").
-		ContentTypeJSON().
-		Header("Cookie", SSOCookieName+"="+ssoCookieValue).
-		Body(body))
+	resp, err := c.post("/api/token", body)
 	if err != nil {
 		return Identity{}, err
 	}
@@ -124,20 +93,19 @@ func FetchAuthzToken(iamBaseURL, projectID, clientSecret, ssoCookieValue string)
 }
 
 type resolveUserRequest struct {
-	ProjectID    string
-	ClientSecret string
-	Email        string
-	Name         string
+	Email string
+	Name  string
 }
 
 func (r *resolveUserRequest) IsNil() bool { return r == nil }
 func (r *resolveUserRequest) EncodeFields(w model.FieldWriter) {
-	w.String("project_id", r.ProjectID)
-	w.String("client_secret", r.ClientSecret)
 	w.String("email", r.Email)
 	w.String("name", r.Name)
 }
-func (r *resolveUserRequest) DecodeFields(fr model.FieldReader) {}
+func (r *resolveUserRequest) DecodeFields(fr model.FieldReader) {
+	r.Email, _ = fr.String("email")
+	r.Name, _ = fr.String("name")
+}
 
 type resolveUserResponse struct {
 	Sub string
@@ -149,21 +117,12 @@ func (r *resolveUserResponse) DecodeFields(fr model.FieldReader) {
 	r.Sub, _ = fr.String("sub")
 }
 
-// ResolveUser calls POST <iamBaseURL>/api/users/resolve server-to-server:
-// finds (or creates) a user by email within iam's identity, and returns
-// their Sub — the same id their token's Sub will carry once they log in.
-// For a consumer that needs to grant a resource (e.g. site ownership) to
-// someone who may never have logged in yet. Requires only clientSecret —
-// there is no session involved (see ARCHITECTURE.md/PathUsersResolve doc
-// in iam's routes package for why that's safe).
-func ResolveUser(iamBaseURL, projectID, clientSecret, email, name string) (string, error) {
+func (c *Consumer) resolveUser(email, name string) (string, error) {
 	var body []byte
-	if err := json.Encode(&resolveUserRequest{ProjectID: projectID, ClientSecret: clientSecret, Email: email, Name: name}, &body); err != nil {
+	if err := json.Encode(&resolveUserRequest{Email: email, Name: name}, &body); err != nil {
 		return "", err
 	}
-	resp, err := doSync(fetch.Post(iamBaseURL + "/api/users/resolve").
-		ContentTypeJSON().
-		Body(body))
+	resp, err := c.post("/api/users/resolve", body)
 	if err != nil {
 		return "", err
 	}

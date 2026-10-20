@@ -20,7 +20,7 @@ func TestRegister_MountsAuthRoutes(t *testing.T) {
 	backend := setupBackend(t)
 
 	r := &mock.Router{}
-	config.RegisterRoutes(r, backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, nil, backend.IDs, backend.PanelOrigin)
+	config.RegisterRoutes(r, backend, nil)
 
 	cases := []struct {
 		method, path string

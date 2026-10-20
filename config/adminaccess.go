@@ -26,16 +26,3 @@ func PanelAdminList() []string {
 	}
 	return list
 }
-
-// IsPanelAdmin evalúa si el email exacto (case-sensitive) está en la lista de administradores del panel.
-func IsPanelAdmin(email string, list []string) bool {
-	if email == "" || len(list) == 0 {
-		return false
-	}
-	for _, admin := range list {
-		if admin == email {
-			return true
-		}
-	}
-	return false
-}

@@ -1,10 +1,12 @@
 package client
 
 import (
+	"webtyp.com/base64"
 	"webtyp.com/env"
+	"webtyp.com/fetch"
 	"webtyp.com/fmt"
 	"webtyp.com/json"
-	"webtyp.com/fetch"
+	tinyjwt "webtyp.com/jwt"
 	"webtyp.com/model"
 	"webtyp.com/router"
 )
@@ -12,15 +14,15 @@ import (
 // Nombres convencionales de las variables de entorno. Están aquí para que
 // todos los consumidores usen las mismas y nadie invente un tercer nombre.
 const (
-	EnvBaseURL      = "IAM_BASE_URL"
-	EnvClientSecret = "IAM_CLIENT_SECRET"
+	EnvBaseURL          = "IAM_BASE_URL"
+	EnvClientPrivateKey = "IAM_CLIENT_PRIVATE_KEY"
 )
 
 // Config es lo que un proyecto necesita para hablarle a iam.
 type Config struct {
-	BaseURL      string // https://iam.velty.cl, o el servidor de desarrollo
-	ProjectID    string // identifica al proyecto ante iam
-	ClientSecret string // NUNCA llega al navegador
+	BaseURL    string // https://iam.velty.cl, o el servidor de desarrollo
+	ProjectID  string // identifica al proyecto ante iam
+	PrivateKey []byte // base64url SEC1 P-256 private key; NUNCA llega al navegador
 }
 
 // Consumer es un proyecto que consume iam. Autentica peticiones contra iam y
@@ -29,17 +31,16 @@ type Config struct {
 //
 // Un proyecto crea UNO al arrancar y lo comparte entre su servidor local y su
 // Worker: son el mismo objeto con la misma configuración, y ahí está la razón
-// de que exista — antes cada punto de entrada armaba el middleware por su
-// cuenta, con cuatro argumentos que había que mantener sincronizados a mano.
+// de que exista.
 type Consumer struct {
 	cfg   Config
 	cache *scopeCache
 }
 
 const (
-	ErrMsgMissingBaseURL      = "iam client: Config.BaseURL is required"
-	ErrMsgMissingProjectID    = "iam client: Config.ProjectID is required"
-	ErrMsgMissingClientSecret = "iam client: Config.ClientSecret is required"
+	ErrMsgMissingBaseURL    = "iam client: Config.BaseURL is required"
+	ErrMsgMissingProjectID  = "iam client: Config.ProjectID is required"
+	ErrMsgMissingPrivateKey = "iam client: Config.PrivateKey is required"
 )
 
 const (
@@ -48,9 +49,7 @@ const (
 	ErrMsgAssignRoleUnknownCode  = "iam client: AssignRole: role code not found"
 )
 
-// New valida la configuración y falla rápido si falta algo. Arrancar sin poder
-// hablarle a iam es peor que no arrancar: cada ruta protegida respondería 403
-// para siempre y nadie sabría por qué.
+// New valida la configuración y falla rápido si falta algo.
 func New(cfg Config) (*Consumer, error) {
 	if cfg.BaseURL == "" {
 		return nil, fmt.Err(ErrMsgMissingBaseURL)
@@ -58,21 +57,43 @@ func New(cfg Config) (*Consumer, error) {
 	if cfg.ProjectID == "" {
 		return nil, fmt.Err(ErrMsgMissingProjectID)
 	}
-	if cfg.ClientSecret == "" {
-		return nil, fmt.Err(ErrMsgMissingClientSecret)
+	if len(cfg.PrivateKey) == 0 {
+		return nil, fmt.Err(ErrMsgMissingPrivateKey)
 	}
 	return &Consumer{cfg: cfg, cache: &scopeCache{}}, nil
 }
 
-// ConfigFromEnv arma una Config leyendo EnvBaseURL y EnvClientSecret.
+// ConfigFromEnv arma una Config leyendo EnvBaseURL y EnvClientPrivateKey.
 // projectID es del proyecto, no del entorno: es una constante suya, no algo
 // que se despliega distinto por ambiente.
 func ConfigFromEnv(projectID string) Config {
+	pkB64 := env.Get(EnvClientPrivateKey)
+	pk, _ := base64.URLDecode(pkB64)
 	return Config{
-		BaseURL:      env.Get(EnvBaseURL),
-		ProjectID:    projectID,
-		ClientSecret: env.Get(EnvClientSecret),
+		BaseURL:    env.Get(EnvBaseURL),
+		ProjectID:  projectID,
+		PrivateKey: pk,
 	}
+}
+
+func (c *Consumer) post(path string, body []byte) (*fetch.Response, error) {
+	method := "POST"
+	fullURL := c.cfg.BaseURL + path
+	assertion, err := tinyjwt.NewClientAssertion(c.cfg.ProjectID, c.cfg.BaseURL, method, fullURL)
+	if err != nil {
+		return nil, err
+	}
+	signed, err := tinyjwt.SignClientAssertion(c.cfg.PrivateKey, assertion)
+	if err != nil {
+		return nil, err
+	}
+	req := fetch.Post(fullURL).
+		ContentTypeJSON().
+		Header("Authorization", "Bearer "+signed)
+	if len(body) > 0 {
+		req.Body(body)
+	}
+	return doSync(req)
 }
 
 // Authn identifica al llamante. Reemplaza a authority.Authenticate() en un
@@ -89,7 +110,7 @@ func (c *Consumer) Authn() router.Middleware {
 				next(ctx)
 				return
 			}
-			id, err := FetchAuthzToken(c.cfg.BaseURL, c.cfg.ProjectID, c.cfg.ClientSecret, cookie.Value)
+			id, err := c.fetchAuthzToken(cookie.Value)
 			if err != nil {
 				next(ctx)
 				return
@@ -105,39 +126,33 @@ func (c *Consumer) Authn() router.Middleware {
 // Scope devuelve los códigos de rol vigentes que iam entregó para userID.
 // ok es false cuando no hay entrada vigente — y eso DENIEGA: la ausencia de
 // una respuesta no es un permiso.
-//
-// Devuelve códigos, no permisos. Qué autoriza cada código es política del
-// proyecto, no de iam (ver docs/ARCHITECTURE.md §3.4).
 func (c *Consumer) Scope(userID string) ([]string, bool) {
 	return c.cache.Scope(userID)
 }
 
+// ResolveUser resuelve un usuario por email ante iam.
+func (c *Consumer) ResolveUser(email, name string) (string, error) {
+	return c.resolveUser(email, name)
+}
+
 type assignRoleRequest struct {
-	ProjectID    string
-	ClientSecret string
-	UserID       string
-	RoleCode     string
+	UserID   string
+	RoleCode string
 }
 
 func (r *assignRoleRequest) IsNil() bool { return r == nil }
 func (r *assignRoleRequest) EncodeFields(w model.FieldWriter) {
-	w.String("project_id", r.ProjectID)
-	w.String("client_secret", r.ClientSecret)
 	w.String("user_id", r.UserID)
 	w.String("role_code", r.RoleCode)
 }
-func (r *assignRoleRequest) DecodeFields(fr model.FieldReader) {}
-
-type assignRoleResponse struct{}
-
-func (r *assignRoleResponse) IsNil() bool                      { return r == nil }
-func (r *assignRoleResponse) EncodeFields(w model.FieldWriter) {}
-func (r *assignRoleResponse) DecodeFields(fr model.FieldReader) {}
+func (r *assignRoleRequest) DecodeFields(fr model.FieldReader) {
+	r.UserID, _ = fr.String("user_id")
+	r.RoleCode, _ = fr.String("role_code")
+}
 
 // AssignRole concede roleCode al usuario en ESTE proyecto. Idempotente: si ya
 // lo tiene, no es un error. Si el roleCode no existe en el proyecto devuelve
-// un error (ErrMsgAssignRoleUnknownCode): un consumidor no define roles, los
-// usa — definirlos es del panel.
+// un error (ErrMsgAssignRoleUnknownCode).
 func (c *Consumer) AssignRole(userID string, roleCode model.RoleCode) error {
 	if userID == "" {
 		return fmt.Err(ErrMsgAssignRoleUserRequired)
@@ -147,16 +162,12 @@ func (c *Consumer) AssignRole(userID string, roleCode model.RoleCode) error {
 	}
 	var body []byte
 	if err := json.Encode(&assignRoleRequest{
-		ProjectID:    c.cfg.ProjectID,
-		ClientSecret: c.cfg.ClientSecret,
-		UserID:       userID,
-		RoleCode:     string(roleCode),
+		UserID:   userID,
+		RoleCode: string(roleCode),
 	}, &body); err != nil {
 		return err
 	}
-	resp, err := doSync(fetch.Post(c.cfg.BaseURL + "/api/roles/assign").
-		ContentTypeJSON().
-		Body(body))
+	resp, err := c.post("/api/roles/assign", body)
 	if err != nil {
 		return err
 	}

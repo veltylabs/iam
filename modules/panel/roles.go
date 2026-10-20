@@ -28,7 +28,7 @@ func wireRoles() {
 }
 
 func loadProjectsSelect() {
-	fetch.Get(config.PathAdminProjects).Send(func(resp *fetch.Response, err error) {
+	Fetch(fetch.Get(config.PathAdminProjects), func(resp *fetch.Response, err error) {
 		if err != nil || resp.Status != 200 {
 			return
 		}
@@ -84,7 +84,7 @@ func loadRolesViewForProject(projectID string) {
 				done(err)
 				return
 			}
-			fetch.Post(config.PathAdminRoles).ContentTypeJSON().Body(buf).Send(func(resp *fetch.Response, err error) {
+			Fetch(fetch.Post(config.PathAdminRoles).ContentTypeJSON().Body(buf), func(resp *fetch.Response, err error) {
 				if err != nil || resp.Status != 201 {
 					done(fmt.Err("Error creating role"))
 					return
@@ -101,7 +101,7 @@ func loadRolesViewForProject(projectID string) {
 
 func loadRolesList(projectID string) {
 	url := config.PathAdminRoles + "?project_id=" + projectID
-	fetch.Get(url).Send(func(resp *fetch.Response, err error) {
+	Fetch(fetch.Get(url), func(resp *fetch.Response, err error) {
 		if err != nil || resp.Status != 200 {
 			setContainerText(IDRolesList, "Error al cargar la lista de roles.")
 			return
@@ -143,7 +143,7 @@ func loadRolesList(projectID string) {
 				ttlReq := &config.AdminRoleTTLRequest{ProjectId: projectID, Code: rCode, SessionTtl: newTTL}
 				var buf []byte
 				_ = json.Encode(ttlReq, &buf)
-				fetch.Post(config.PathAdminRoleTTL).ContentTypeJSON().Body(buf).Send(func(res *fetch.Response, err error) {
+				Fetch(fetch.Post(config.PathAdminRoleTTL).ContentTypeJSON().Body(buf), func(res *fetch.Response, err error) {
 					if err == nil && res.Status == 200 {
 						loadRolesList(projectID)
 					}
@@ -155,7 +155,7 @@ func loadRolesList(projectID string) {
 				refReq := &config.AdminRoleRefRequest{ProjectId: projectID, Code: rCode}
 				var buf []byte
 				_ = json.Encode(refReq, &buf)
-				fetch.Post(config.PathAdminRoleDelete).ContentTypeJSON().Body(buf).Send(func(res *fetch.Response, err error) {
+				Fetch(fetch.Post(config.PathAdminRoleDelete).ContentTypeJSON().Body(buf), func(res *fetch.Response, err error) {
 					if err == nil && res.Status == 200 {
 						loadRolesList(projectID)
 					}

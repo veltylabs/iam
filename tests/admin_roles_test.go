@@ -10,16 +10,23 @@ import (
 	"webtyp.com/router/mock"
 
 	"github.com/veltylabs/iam/config"
-	"github.com/veltylabs/iam/modules/admin"
 )
+
+func encodeBody(t *testing.T, v model.Encodable) []byte {
+	t.Helper()
+	var out []byte
+	if err := json.Encode(v, &out); err != nil {
+		t.Fatalf("encodeBody: %v", err)
+	}
+	return out
+}
 
 func TestCreateRole_ThenListed(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
 	u, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
-	secret, _ := config.GenerateClientSecret()
-	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
+	_ = config.CreateProject(b.DB, "proj1", "App 1", "")
 
-	hCreate := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.CreateRoleHandler(b.DB, b.RBAC, b.IDs))
+	hCreate := config.CreateRoleHandler(b.DB, b.RBAC, b.IDs, b.Auth)
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoles}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminCreateRoleRequest{ProjectId: "proj1", Code: "admin", Name: "Administrator", Description: "Desc"})
@@ -29,7 +36,7 @@ func TestCreateRole_ThenListed(t *testing.T) {
 		t.Fatalf("CreateRole status %d, want 201", ctx.Status)
 	}
 
-	hList := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListRolesHandler(b.DB, b.RBAC))
+	hList := config.ListRolesHandler(b.DB, b.RBAC)
 	ctxList := &mock.Context{InMethod: "GET", InPath: config.PathAdminRoles + "?project_id=proj1"}
 	ctxList.SetUserID(u.Id)
 	hList(ctxList)
@@ -48,11 +55,10 @@ func TestCreateRole_ThenListed(t *testing.T) {
 func TestSetRoleTTL(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
 	u, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
-	secret, _ := config.GenerateClientSecret()
-	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
+	_ = config.CreateProject(b.DB, "proj1", "App 1", "")
 	_ = b.RBAC.CreateRole("proj1", "role1", model.RoleCode("editor"), "Editor", "")
 
-	hTTL := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.SetRoleTTLHandler(b.DB, b.RBAC, b.IDs))
+	hTTL := config.SetRoleTTLHandler(b.DB, b.RBAC, b.IDs, b.Auth)
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoleTTL}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminRoleTTLRequest{ProjectId: "proj1", Code: "editor", SessionTtl: 600})
@@ -71,11 +77,10 @@ func TestSetRoleTTL(t *testing.T) {
 func TestDeleteRole(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
 	u, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
-	secret, _ := config.GenerateClientSecret()
-	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
+	_ = config.CreateProject(b.DB, "proj1", "App 1", "")
 	_ = b.RBAC.CreateRole("proj1", "role1", model.RoleCode("editor"), "Editor", "")
 
-	hDelete := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.DeleteRoleHandler(b.DB, b.RBAC, b.IDs))
+	hDelete := config.DeleteRoleHandler(b.DB, b.RBAC, b.IDs, b.Auth)
 	ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoleDelete}
 	ctx.SetUserID(u.Id)
 	ctx.InBody = encodeBody(t, &config.AdminRoleRefRequest{ProjectId: "proj1", Code: "editor"})
@@ -103,13 +108,13 @@ func TestRolesIsolatedByProject(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
 	u, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
 
-	_ = config.CreateProject(b.DB, "proj1", "App 1", "secret1")
-	_ = config.CreateProject(b.DB, "proj2", "App 2", "secret2")
+	_ = config.CreateProject(b.DB, "proj1", "App 1", "")
+	_ = config.CreateProject(b.DB, "proj2", "App 2", "")
 
 	_ = b.RBAC.CreateRole("proj1", "r1", model.RoleCode("admin"), "Admin 1", "")
 	_ = b.RBAC.CreateRole("proj2", "r2", model.RoleCode("admin"), "Admin 2", "")
 
-	hList := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListRolesHandler(b.DB, b.RBAC))
+	hList := config.ListRolesHandler(b.DB, b.RBAC)
 	ctxList := &mock.Context{InMethod: "GET", InPath: config.PathAdminRoles + "?project_id=proj1"}
 	ctxList.SetUserID(u.Id)
 	hList(ctxList)
@@ -121,15 +126,12 @@ func TestRolesIsolatedByProject(t *testing.T) {
 	}
 }
 
-// TestCreateRoleDuplicateCode409: crear dos roles con el mismo code en el
-// mismo proyecto devuelve 409 la segunda vez.
 func TestCreateRoleDuplicateCode409(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
 	u, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
-	secret, _ := config.GenerateClientSecret()
-	_ = config.CreateProject(b.DB, "proj1", "App 1", secret)
+	_ = config.CreateProject(b.DB, "proj1", "App 1", "")
 
-	hCreate := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.CreateRoleHandler(b.DB, b.RBAC, b.IDs))
+	hCreate := config.CreateRoleHandler(b.DB, b.RBAC, b.IDs, b.Auth)
 	call := func() int {
 		ctx := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoles}
 		ctx.SetUserID(u.Id)

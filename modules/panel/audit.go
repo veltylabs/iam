@@ -15,7 +15,7 @@ func wireAudit() {
 }
 
 func loadAuditList() {
-	fetch.Get(config.PathAdminAudit).Send(func(resp *fetch.Response, err error) {
+	Fetch(fetch.Get(config.PathAdminAudit), func(resp *fetch.Response, err error) {
 		if err != nil || resp.Status != 200 {
 			setContainerText(IDAuditList, "Error al cargar la auditoría.")
 			return

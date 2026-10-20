@@ -29,7 +29,7 @@ func wireUsers() {
 				done(err)
 				return
 			}
-			fetch.Post(config.PathAdminUserAssign).ContentTypeJSON().Body(buf).Send(func(resp *fetch.Response, err error) {
+			Fetch(fetch.Post(config.PathAdminUserAssign).ContentTypeJSON().Body(buf), func(resp *fetch.Response, err error) {
 				if err != nil || resp.Status != 200 {
 					done(fmt.Err("Error assigning role"))
 					return
@@ -53,7 +53,7 @@ func loadRoleUsersList(projectID, code string) {
 		return
 	}
 	url := config.PathAdminRoleUsers + "?project_id=" + projectID + "&code=" + code
-	fetch.Get(url).Send(func(resp *fetch.Response, err error) {
+	Fetch(fetch.Get(url), func(resp *fetch.Response, err error) {
 		if err != nil || resp.Status != 200 {
 			setContainerText(IDUsersList, "Error al cargar la lista de usuarios del rol.")
 			return
@@ -82,7 +82,7 @@ func loadRoleUsersList(projectID, code string) {
 				req := &config.AdminUserRoleRequest{ProjectId: projectID, Code: code, Email: uEmail}
 				var buf []byte
 				_ = json.Encode(req, &buf)
-				fetch.Post(config.PathAdminUserRevoke).ContentTypeJSON().Body(buf).Send(func(res *fetch.Response, err error) {
+				Fetch(fetch.Post(config.PathAdminUserRevoke).ContentTypeJSON().Body(buf), func(res *fetch.Response, err error) {
 					if err == nil && res.Status == 200 {
 						loadRoleUsersList(projectID, code)
 					}

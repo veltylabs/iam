@@ -8,30 +8,39 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"webtyp.com/json"
+	"webtyp.com/crypto/asym"
 	tinyjwt "webtyp.com/jwt"
-	"webtyp.com/model"
 	"webtyp.com/router"
 	"webtyp.com/router/mock"
 	"webtyp.com/time"
 	"github.com/veltylabs/iam/client"
-	"github.com/veltylabs/iam/config"
 )
 
+func testKeys(t *testing.T) ([]byte, []byte) {
+	t.Helper()
+	pub, priv, err := asym.GenerateKeyPair()
+	if err != nil {
+		t.Fatalf("GenerateKeyPair: %v", err)
+	}
+	return pub, priv
+}
+
 func TestNewRejectsEmptyConfig(t *testing.T) {
-	if _, err := client.New(client.Config{BaseURL: "", ProjectID: "p", ClientSecret: "s"}); err == nil || err.Error() != client.ErrMsgMissingBaseURL {
+	_, priv := testKeys(t)
+	if _, err := client.New(client.Config{BaseURL: "", ProjectID: "p", PrivateKey: priv}); err == nil || err.Error() != client.ErrMsgMissingBaseURL {
 		t.Errorf("missing BaseURL: got %v, want %q", err, client.ErrMsgMissingBaseURL)
 	}
-	if _, err := client.New(client.Config{BaseURL: "http://x", ProjectID: "", ClientSecret: "s"}); err == nil || err.Error() != client.ErrMsgMissingProjectID {
+	if _, err := client.New(client.Config{BaseURL: "http://x", ProjectID: "", PrivateKey: priv}); err == nil || err.Error() != client.ErrMsgMissingProjectID {
 		t.Errorf("missing ProjectID: got %v, want %q", err, client.ErrMsgMissingProjectID)
 	}
-	if _, err := client.New(client.Config{BaseURL: "http://x", ProjectID: "p", ClientSecret: ""}); err == nil || err.Error() != client.ErrMsgMissingClientSecret {
-		t.Errorf("missing ClientSecret: got %v, want %q", err, client.ErrMsgMissingClientSecret)
+	if _, err := client.New(client.Config{BaseURL: "http://x", ProjectID: "p", PrivateKey: nil}); err == nil || err.Error() != client.ErrMsgMissingPrivateKey {
+		t.Errorf("missing PrivateKey: got %v, want %q", err, client.ErrMsgMissingPrivateKey)
 	}
 }
 
 func TestAuthnAnonymousWithoutCookie(t *testing.T) {
-	consumer, err := client.New(client.Config{BaseURL: "http://localhost:1", ProjectID: "proj-1", ClientSecret: "secret"})
+	_, priv := testKeys(t)
+	consumer, err := client.New(client.Config{BaseURL: "http://localhost:1", ProjectID: "proj-1", PrivateKey: priv})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,12 +63,13 @@ func TestAuthnAnonymousWithoutCookie(t *testing.T) {
 }
 
 func TestAuthnAnonymousWhenIAMRejects(t *testing.T) {
+	_, priv := testKeys(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
 	}))
 	defer srv.Close()
 
-	consumer, err := client.New(client.Config{BaseURL: srv.URL, ProjectID: "proj-1", ClientSecret: "secret"})
+	consumer, err := client.New(client.Config{BaseURL: srv.URL, ProjectID: "proj-1", PrivateKey: priv})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +127,8 @@ func TestFromContextWithoutIdentity(t *testing.T) {
 }
 
 func TestScopeDeniesWhenAbsent(t *testing.T) {
-	consumer, err := client.New(client.Config{BaseURL: "http://x", ProjectID: "p", ClientSecret: "s"})
+	_, priv := testKeys(t)
+	consumer, err := client.New(client.Config{BaseURL: "http://x", ProjectID: "p", PrivateKey: priv})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +157,8 @@ func TestScopeDeniesWhenExpired(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	consumer, err := client.New(client.Config{BaseURL: srv.URL, ProjectID: "proj-1", ClientSecret: "secret"})
+	_, priv := testKeys(t)
+	consumer, err := client.New(client.Config{BaseURL: srv.URL, ProjectID: "proj-1", PrivateKey: priv})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +204,8 @@ func TestScopeOverwritesSameUser(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	consumer, err := client.New(client.Config{BaseURL: srv.URL, ProjectID: "proj-1", ClientSecret: "secret"})
+	_, priv := testKeys(t)
+	consumer, err := client.New(client.Config{BaseURL: srv.URL, ProjectID: "proj-1", PrivateKey: priv})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +227,8 @@ func TestScopeOverwritesSameUser(t *testing.T) {
 }
 
 func TestAssignRoleRejectsEmptyArgs(t *testing.T) {
-	consumer, err := client.New(client.Config{BaseURL: "http://x", ProjectID: "p", ClientSecret: "s"})
+	_, priv := testKeys(t)
+	consumer, err := client.New(client.Config{BaseURL: "http://x", ProjectID: "p", PrivateKey: priv})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,115 +240,29 @@ func TestAssignRoleRejectsEmptyArgs(t *testing.T) {
 	}
 }
 
-func TestAssignRoleIsIdempotent(t *testing.T) {
-	backend := setupBackend(t)
-	const projectID = "proj-assign-1"
-	if err := config.CreateProject(backend.DB, projectID, "Proj Assign", "proj-secret"); err != nil {
-		t.Fatalf("CreateProject: %v", err)
-	}
-	u, err := backend.Auth.CreateUser("assign@test.com", "Assign", "")
-	if err != nil {
-		t.Fatalf("CreateUser: %v", err)
-	}
-	// /api/roles/assign ya no crea roles: el rol tiene que existir.
-	if err := backend.RBAC.CreateRole(projectID, "r-editor", model.RoleCode("editor"), "Editor", ""); err != nil {
-		t.Fatalf("CreateRole: %v", err)
-	}
-	handler := config.AssignRole(backend.DB, backend.RBAC)
-
-	call := func(userID, roleCode string) int {
-		ctx := &mock.Context{}
-		var out []byte
-		if err := json.Encode(&config.AssignRoleRequest{
-			ProjectID: projectID, ClientSecret: "proj-secret", UserID: userID, RoleCode: roleCode,
-		}, &out); err != nil {
-			t.Fatalf("encode: %v", err)
-		}
-		ctx.InBody = out
-		handler(ctx)
-		return ctx.Status
-	}
-
-	if status := call(u.Id, "editor"); status != 200 {
-		t.Fatalf("first assign: got status %d, want 200", status)
-	}
-	if status := call(u.Id, "editor"); status != 200 {
-		t.Fatalf("second assign (idempotent): got status %d, want 200", status)
-	}
-	roles, err := backend.RBAC.GetUserRoles(projectID, u.Id)
-	if err != nil {
-		t.Fatalf("GetUserRoles: %v", err)
-	}
-	found := false
-	for _, r := range roles {
-		if r.Code == "editor" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("role editor not found after assign: got %+v", roles)
-	}
-}
-
-func TestAssignRoleIsScopedToTheProject(t *testing.T) {
-	backend := setupBackend(t)
-	const projectID = "proj-scoped"
-	const otherProjectID = "proj-other"
-	if err := config.CreateProject(backend.DB, projectID, "Proj Scoped", "secret-scoped"); err != nil {
-		t.Fatalf("CreateProject scoped: %v", err)
-	}
-	if err := config.CreateProject(backend.DB, otherProjectID, "Proj Other", "secret-other"); err != nil {
-		t.Fatalf("CreateProject other: %v", err)
-	}
-	u, err := backend.Auth.CreateUser("scoped@test.com", "Scoped", "")
-	if err != nil {
-		t.Fatalf("CreateUser: %v", err)
-	}
-	if err := backend.RBAC.CreateRole(projectID, "r-editor", model.RoleCode("editor"), "Editor", ""); err != nil {
-		t.Fatalf("CreateRole: %v", err)
-	}
-
-	var gotBody string
+func TestResolveUserViaConsumer(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, _ := io.ReadAll(r.Body)
-		gotBody = string(b)
+		authHdr := r.Header.Get("Authorization")
+		if authHdr == "" {
+			w.WriteHeader(403)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{}`))
+		w.Write([]byte(`{"sub":"resolved-user-id"}`))
 	}))
 	defer srv.Close()
 
-	consumer2, err := client.New(client.Config{BaseURL: srv.URL, ProjectID: projectID, ClientSecret: "secret-scoped"})
+	_, priv := testKeys(t)
+	consumer, err := client.New(client.Config{BaseURL: srv.URL, ProjectID: "p1", PrivateKey: priv})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := consumer2.AssignRole(u.Id, "editor"); err != nil {
-		t.Fatalf("AssignRole: %v", err)
-	}
-	if !contains(gotBody, `"project_id":"`+projectID+`"`) {
-		t.Errorf("body should contain project_id %q, got %q", projectID, gotBody)
-	}
-	if contains(gotBody, otherProjectID) {
-		t.Errorf("body should not contain other project %q, got %q", otherProjectID, gotBody)
-	}
-	handler := config.AssignRole(backend.DB, backend.RBAC)
-	ctx := &mock.Context{}
-	var out []byte
-	if err := json.Encode(&config.AssignRoleRequest{
-		ProjectID: projectID, ClientSecret: "secret-scoped", UserID: u.Id, RoleCode: "editor",
-	}, &out); err != nil {
-		t.Fatal(err)
-	}
-	ctx.InBody = out
-	handler(ctx)
-	if ctx.Status != 200 {
-		t.Fatalf("handler assign: got %d, want 200", ctx.Status)
-	}
-	rolesOther, err := backend.RBAC.GetUserRoles(otherProjectID, u.Id)
+	sub, err := consumer.ResolveUser("test@example.com", "Test")
 	if err != nil {
-		t.Fatalf("GetUserRoles other: %v", err)
+		t.Fatalf("ResolveUser: %v", err)
 	}
-	if len(rolesOther) != 0 {
-		t.Errorf("other project should have no roles, got %+v", rolesOther)
+	if sub != "resolved-user-id" {
+		t.Errorf("got sub %q, want %q", sub, "resolved-user-id")
 	}
-	_ = model.RoleCode("")
 }

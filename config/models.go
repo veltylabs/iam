@@ -12,7 +12,7 @@ var ProjectModel = model.Definition{
 	Fields: model.Fields{
 		{Name: "id", Type: model.Text(), DB: &model.FieldDB{PK: true}},
 		{Name: "name", Type: model.Text()},
-		{Name: "client_secret_hash", Type: model.Text()},
+		{Name: "client_public_key", Type: model.Text()},
 		{Name: "created_at", Type: model.Int()},
 		// active: 1 = activo, 0 = desactivado. Fila sin valor (previa a esta
 		// migración) se trata como ACTIVA — ver 1.5. Sin widget: no se edita en form.

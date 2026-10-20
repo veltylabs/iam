@@ -29,8 +29,9 @@ func main() {
 	}
 
 	r := edge.NewRouter(edge.Config{
-		Authn: backend.Auth.Authenticate(),
+		Authn:     backend.Auth.Authenticate(),
+		Authorize: config.Authorizer(backend.RBAC),
 	})
-	config.RegisterRoutes(r, db, backend.Auth, backend.RBAC, backend.JWTSecret, config.PanelAdminList(), ids, backend.PanelOrigin)
+	config.RegisterRoutes(r, backend, config.PanelAdminList())
 	edge.Serve(r)
 }

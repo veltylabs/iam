@@ -46,5 +46,5 @@ func isAlreadyExistsErr(err error) bool {
 		return true
 	}
 	msg := err.Error()
-	return fmt.Contains(msg, "already") || fmt.Contains(msg, "exists") || fmt.Contains(msg, "UNIQUE")
+	return fmt.Contains(msg, "already") || fmt.Contains(msg, "exists") || fmt.Contains(msg, "UNIQUE") || fmt.Contains(msg, "duplicate")
 }

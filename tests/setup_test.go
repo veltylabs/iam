@@ -3,12 +3,16 @@
 package tests
 
 import (
+	"fmt"
+	"os"
+	"strings"
 	"testing"
 
 	"webtyp.com/auth/authority"
 	"webtyp.com/model"
 	"webtyp.com/orm"
 	"webtyp.com/rbac"
+	"webtyp.com/router"
 	"webtyp.com/router/mock"
 	"webtyp.com/sqlt"
 	"webtyp.com/storage/mem"
@@ -21,6 +25,10 @@ const testPanelOrigin = "https://iam.velty.cl"
 
 func migrateTestDB(t *testing.T, db *orm.DB) {
 	t.Helper()
+	// mem.New() auto-vivifies tables on insert; only migrate real SQL connections.
+	if strings.Contains(fmt.Sprintf("%T", db.RawConn()), "mem") {
+		return
+	}
 	if err := config.MigrateAll(db.RawConn(), sqlt.NewCompiler()); err != nil {
 		t.Fatal(err)
 	}
@@ -31,9 +39,12 @@ func migrateTestDB(t *testing.T, db *orm.DB) {
 func setup(t *testing.T) (*orm.DB, *authority.Module, *rbac.Service, model.IDGenerator) {
 	t.Helper()
 	t.Setenv(config.EnvGoogleClientID, "test-client-id")
-	t.Setenv(config.EnvGoogleClientSecret, "test-client-secret")
+	t.Setenv(config.EnvGoogleSecret, "test-client-secret")
 	t.Setenv(config.EnvGoogleRedirectURL, "http://localhost:8080/oauth/callback/google")
 	t.Setenv(config.EnvJWTSecret, "test-jwt-secret-32-bytes-long-0000")
+	if os.Getenv(config.EnvPanelOrigin) == "" {
+		t.Setenv(config.EnvPanelOrigin, testPanelOrigin)
+	}
 
 	db := orm.New(mem.New())
 	migrateTestDB(t, db)
@@ -53,10 +64,12 @@ func setup(t *testing.T) (*orm.DB, *authority.Module, *rbac.Service, model.IDGen
 func setupBackend(t *testing.T) *config.Backend {
 	t.Helper()
 	t.Setenv(config.EnvGoogleClientID, "test-client-id")
-	t.Setenv(config.EnvGoogleClientSecret, "test-client-secret")
+	t.Setenv(config.EnvGoogleSecret, "test-client-secret")
 	t.Setenv(config.EnvGoogleRedirectURL, "http://localhost:8080/oauth/callback/google")
 	t.Setenv(config.EnvJWTSecret, "test-jwt-secret-32-bytes-long-0000")
-	t.Setenv(config.EnvPanelOrigin, testPanelOrigin)
+	if os.Getenv(config.EnvPanelOrigin) == "" {
+		t.Setenv(config.EnvPanelOrigin, testPanelOrigin)
+	}
 
 	db := orm.New(mem.New())
 	migrateTestDB(t, db)
@@ -81,10 +94,49 @@ func setupPanel(t *testing.T, adminEmail string) (*config.Backend, *mock.Router)
 func setupPanelWithOrigin(t *testing.T, adminEmail, origin string) (*config.Backend, *mock.Router) {
 	t.Helper()
 	b := setupBackend(t)
-	b.PanelOrigin = origin
+	b.Origin = origin
 	r := &mock.Router{}
-	config.RegisterRoutes(r, b.DB, b.Auth, b.RBAC, b.JWTSecret, []string{adminEmail}, b.IDs, origin)
+	r.Configure(mock.Config{
+		Authn:     b.Auth.Authenticate(),
+		Authorize: config.Authorizer(b.RBAC),
+	})
+	if err := config.EnsurePolicy(b.RBAC, b.Auth, []string{adminEmail}); err != nil {
+		t.Fatalf("EnsurePolicy: %v", err)
+	}
+	if u, err := b.Auth.UserByEmail(adminEmail); err == nil {
+		_ = b.RBAC.AssignRole(config.IAMProjectID, u.Id, config.RoleIAMClientID)
+	}
+	config.RegisterRoutes(r, b, []string{adminEmail})
 	return b, r
+}
+
+func issueSSO(t *testing.T, b *config.Backend, userID string) router.Cookie {
+	t.Helper()
+	ctx := &mock.Context{}
+	if err := b.Auth.IssueSession(ctx, userID); err != nil {
+		t.Fatalf("IssueSession: %v", err)
+	}
+	c, ok := ctx.Cookie(config.CookieSession)
+	if !ok {
+		t.Fatalf("cookie %s not set on context", config.CookieSession)
+	}
+	return c
+}
+
+func issueStepUp(t *testing.T, b *config.Backend, userID string) router.Cookie {
+	t.Helper()
+	ctx := &mock.Context{}
+	if err := b.Auth.IssueStepUpSession(ctx, userID); err != nil {
+		t.Fatalf("IssueStepUpSession: %v", err)
+	}
+	c, ok := ctx.Cookie("__Host-" + config.CookieAdmin)
+	if !ok {
+		c, ok = ctx.Cookie(config.CookieAdmin)
+	}
+	if !ok {
+		t.Fatalf("cookie %s not set on context", config.CookieAdmin)
+	}
+	return c
 }
 
 // adminCtx devuelve un mock.Context con la sesión ya emitida para email y
@@ -100,7 +152,10 @@ func adminCtx(t *testing.T, b *config.Backend, email string) *mock.Context {
 		}
 	}
 	ctx := &mock.Context{}
+	c := issueStepUp(t, b, u.Id)
+	ctx.SetCookie(c)
 	ctx.SetUserID(u.Id)
+	ctx.SetAssurance(model.AssuranceMultiFactor)
 	ctx.SetHeader("Sec-Fetch-Site", "same-origin")
 	return ctx
 }
@@ -117,7 +172,10 @@ func crossSiteCtx(t *testing.T, b *config.Backend, email string) *mock.Context {
 		}
 	}
 	ctx := &mock.Context{}
+	c := issueStepUp(t, b, u.Id)
+	ctx.SetCookie(c)
 	ctx.SetUserID(u.Id)
+	ctx.SetAssurance(model.AssuranceMultiFactor)
 	ctx.SetHeader("Sec-Fetch-Site", "cross-site")
 	ctx.SetHeader("Origin", "https://misitio.velty.cl")
 	return ctx
@@ -127,14 +185,15 @@ func crossSiteCtx(t *testing.T, b *config.Backend, email string) *mock.Context {
 // sin repetir la consulta.
 func lastAudit(t *testing.T, db *orm.DB) config.AuditEntry {
 	t.Helper()
-	entries, err := config.ListAudit(db, 1)
+	qb := db.Query(&config.AuditEntry{})
+	entries, err := config.ReadAllAuditEntry(qb)
 	if err != nil {
 		t.Fatalf("lastAudit: %v", err)
 	}
 	if len(entries) == 0 {
 		t.Fatalf("lastAudit: no audit entries")
 	}
-	return *entries[0]
+	return *entries[len(entries)-1]
 }
 
 // setupLocal arma el motor de desarrollo local, sin variables GOOGLE_*.

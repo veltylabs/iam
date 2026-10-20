@@ -12,7 +12,7 @@ import (
 
 func TestProductionBackend_DoesNotMigrate(t *testing.T) {
 	t.Setenv(config.EnvGoogleClientID, "test-client-id")
-	t.Setenv(config.EnvGoogleClientSecret, "test-client-secret")
+	t.Setenv(config.EnvGoogleSecret, "test-client-secret")
 	t.Setenv(config.EnvGoogleRedirectURL, "http://localhost:8080/oauth/callback/google")
 	t.Setenv(config.EnvJWTSecret, "test-jwt-secret-32-bytes-long-0000")
 	t.Setenv(config.EnvPanelOrigin, "https://iam.velty.cl")

@@ -205,66 +205,50 @@ acota la ventana de "rol revocado pero token aún vivo" a, como mucho, el
 TTL vigente — sin necesitar una lista de tokens revocados consultada en
 cada verificación. Se revisita si aparece un caso real que lo exija.
 
-### 6.4 — Autenticación de la app: client credentials por proyecto
+### 6.4 — Autenticación de la app: private_key_jwt (RFC 7523) por proyecto
 
-> Por qué se llama `client_secret` y no "token", y cómo lo nombra la
-> industria en general: [`DESIGN.md`](DESIGN.md) §1.
+La cookie de identidad prueba quién es el **usuario**, no qué app realiza la
+petición. Cada proyecto registrado en `iam` registra su clave pública P-256
+(SPKI DER codificada en base64url). Los endpoints de máquina (`POST /api/token`,
+`POST /api/users/resolve`, `POST /api/roles/assign`) autentican a la aplicación
+mediante client assertions firmadas con su clave privada correspondiente (`private_key_jwt`,
+RFC 7523).
 
-La cookie de identidad prueba quién es el **usuario**, no que la app que
-la reenvía es realmente `misitio` y no un sitio impostor bajo el mismo
-dominio padre. Cada proyecto registrado en `iam` recibe un `client_id` +
-`client_secret` (estilo OAuth2 client credentials) al darse de alta. El
-endpoint que emite el token de autorización exige ambas cosas: la cookie
-de identidad (quién es el usuario) y el secreto del proyecto (qué app lo
-pide). Sin el secreto, cualquier código bajo `*.velty.cl` podría pedir
-tokens para un proyecto ajeno.
-
-**Server-to-server, nunca desde el navegador.** `client_secret` no puede
-vivir en un bundle WASM/JS que el usuario puede inspeccionar — eso
-anularía por completo la protección de este apartado. Quien llama a
-`POST /api/token` es siempre el **servidor** del proyecto consumidor
-(nunca `fetch()` desde el cliente): recibe la cookie SSO en su propia
-request entrante (Domain `.velty.cl` la trae automáticamente, sin código
-adicional) y la reenvía él mismo a `iam`, junto con su `client_secret`
-guardado como variable de entorno del servidor. `POST /api/token` por
-tanto **no lleva CORS** — no hay llamador cross-origin que necesite esas
-cabeceras. `veltylabs/iam/client` es el cliente HTTP que hace exactamente
-esto (`FetchAuthzToken`), para que cada consumidor no reimplemente el
-mecanismo.
+Cada petición genera una aserción JWT de corta duración vinculada al método HTTP (`htm`),
+a la URL completa destino (`htu`), con identificador único (`jti`) para prevenir
+ataques de repetición (replay) y audiencia fijada a `iam`. Quien llama es siempre el
+**servidor** del proyecto consumidor a través de `client.Consumer` (`veltylabs/iam/client`),
+nunca el navegador. No existen secretos compartidos simétricos (`client_secret`) en la base
+ni en tránsito.
 
 **La respuesta también lleva el perfil básico** (`email`/`name`/`avatar`),
 no solo el token — `misitio` (y cualquier consumidor sin tabla de usuarios
-propia) necesita mostrar "Hola, &lt;nombre&gt;" sin una segunda llamada.
+propia) necesita mostrar "Hola, <nombre>" sin una segunda llamada.
 Esto vive FUERA del JWT (`Claims` sigue cerrado — ver §6.2): son campos de
-la respuesta HTTP de `/api/token`, no claims firmados. `iam` ya resuelve
-esto con `authMod.GetUser(userID)`, mismo mecanismo que usaba internamente
-antes de esta etapa.
+la respuesta HTTP de `/api/token`, no claims firmados. `iam` resuelve
+esto con `authMod.GetUser(userID)`.
 
-## 7. Etapa 4 — SSO cross-dominio (EJECUTADA, 2026-08-24)
+## 7. Sesiones y niveles de aseguramiento (AAL2 / AAL3)
 
-- **Mecanismo:** cookie de dominio padre `.velty.cl`, no JWT portado por
-  redirect. `router.Cookie` ya declara un campo `Domain` (sin usar hoy por
-  `auth/session/jwt.Strategy`); `SameSite=Strict` funciona entre
-  subdominios del mismo sitio registrable (`velty.cl`), así que no hace
-  falta relajarlo a `Lax`/`None`. El navegador la envía solo a `*.velty.cl`,
-  sin código adicional en cada app consumidora.
+`iam` implementa dos sesiones opacas revocables independientes en almacenamiento:
+
+1. **Sesión SSO (Single-Factor, NIST AAL2):**
+   - Cookie: `iam_session`, `Domain=.velty.cl`, `SameSite=Strict`, `HttpOnly`, `Secure`.
+   - Duración: 12 horas absoluta (`SSOSessionAbsolute`), 30 minutos de inactividad (`SSOSessionIdle`).
+   - Alcance: identidad compartida entre subdominios de `velty.cl`. Permite a los consumidores
+     autenticar usuarios mediante intercambio en `/api/token`.
+
+2. **Sesión Administrativa de Paso Adelante (Multi-Factor, NIST AAL3):**
+   - Cookie: `__Host-iam_admin`, host-only (sin atributo Domain), `SameSite=Strict`, `HttpOnly`, `Secure`.
+   - Duración: 8 horas absoluta (`AdminSessionAbsolute`), 15 minutos de inactividad (`AdminSessionIdle`).
+   - Alcance: restringida exclusivamente a `iam.velty.cl`. Requiere verificación mediante WebAuthn / Passkey.
+     Todas las rutas administrativas de `/api/admin/*`, `/_routes` y `/api/health/db` exigen `.RequiresMFA()`.
+
 - **Subdominio de `iam`:** `iam.velty.cl` — coherente con el patrón ya
-  usado (`misitio.velty.cl`), en la misma zona/cuenta Cloudflare "velty"
-  (ver memoria `cloudflare-velty-cl-worker`).
-- **TTL de la cookie de identidad:** 7 días — igual al `TTLSession` que ya
-  usan `iam`/`misitio` para su cookie de sesión local hoy. No arriesga
-  permisos obsoletos (no lleva roles), así que puede ser más largo que el
-  token de autorización.
+  usado (`misitio.velty.cl`), en la misma zona/cuenta Cloudflare "velty".
 - **Volver al consumidor tras el login:** el usuario entra a `iam` desde
-  `misitio` (u otro proyecto), no directamente — tras loguearse necesita
-  volver adonde estaba, no quedarse en `iam.velty.cl`. `iam` inicia el
-  login con `/oauth/google?redirect_uri=<url del consumidor>`
-  (`tinywasm/auth/oauth2`, `oauth2.WithRedirectValidator`): el
-  valor pasa por `isVeltyDomain` (mismo criterio que el resto de este
-  documento — host `velty.cl` o subdominio suyo) antes de aceptarse, vía
-  una cookie de un solo uso (`oauth_redirect`, `SameSite=Lax`, 5 minutos)
-  que sobrevive la ida y vuelta a Google. Sin esa validación, `iam` sería
-  un open-redirect utilizable para phishing.
+  `misitio` (u otro proyecto) vía `/oauth/google?redirect_uri=<url del consumidor>`
+  con validación estricta de dominio (`isVeltyDomain`).
 - **Redirección post-login — qué termina un host:** `isVeltyDomain`
   (`config/auth.go`) extrae el host igual que lo haría un navegador, y la
   lista de terminadores es exhaustiva a propósito: `/` (path), `?`
@@ -345,34 +329,28 @@ puede automatizar.
 `iam`. Un test —o una sesión manual— que necesite un proyecto lo crea a
 través del propio panel/API contra `storage/mem`.
 
-### 8.2 — Quién entra al panel: `IAM_ADMIN_EMAILS`
+### 8.2 — Quién administra el panel: el rol `iam_admin`
 
-RBAC es *lo que el panel administra*, así que no puede exigir un rol RBAC
-para entrar por primera vez (sería circular). El gate es una variable de
-entorno:
+El acceso administrativo al panel se modela mediante el rol `iam_admin`
+(`RoleIAMAdmin`) dentro del proyecto del sistema `iam` (`IAMProjectID`).
 
 | Variable | Obligatoria | Qué es |
 |---|---|---|
-| `IAM_ADMIN_EMAILS` | sí (prod) | Lista de correos separados por coma. Una petición llega a cualquier ruta `/api/admin/*` solo si el correo de la sesión SSO activa está en la lista. |
+| `IAM_ADMIN_EMAILS` | sí (prod) | Semilla de correos electrónicos. Al arrancar, `EnsurePolicy` asegura la existencia del rol `iam_admin`, sus permisos y asigna el rol a cada correo listado. |
 
-En local (`web/server.go`) la lista **por defecto** es el correo del primer
-escenario de `config.LocalScenarios` (`admin@iam.local`), así que la
-identidad mock de desarrollo entra sin configurar nada; se puede sobrescribir
-con `env.Arg("iam_admin_emails")`.
-
-Se evaluó dar de alta un proyecto `iam` que se administrara a sí mismo con
-RBAC (dogfooding). Descartado: mismo requisito de sembrar la lista de
-correos, más piezas móviles, y un bootstrap circular. Ver
-[`DESIGN.md`](DESIGN.md) §2.
+`IAM_ADMIN_EMAILS` actúa estrictamente como **semilla (seed)**: remover un email
+de la variable de entorno no revoca el rol en la base de datos. La revocación
+de administradores se realiza explícitamente desde el panel de administración
+y queda registrada en la auditoría.
 
 ### 8.3 — Qué administra
 
 | Área | Operaciones | Mecanismo subyacente |
 |---|---|---|
-| **Proyectos** | listar · crear (muestra el `client_secret` en claro **una sola vez**) · regenerar secreto (el anterior deja de validar de inmediato) · desactivar | `config.CreateProject` / `config.RegenerateProjectSecret` / `config.SetProjectActive` — solo se guarda el HMAC del secreto (§6.4) |
+| **Proyectos** | listar · crear (asocia clave pública SPKI P-256 base64url) · fijar/rotar clave pública · desactivar | `config.CreateProject` / `config.SetProjectKey` / `config.SetProjectActive` — autenticación RFC 7523 (§6.4) |
 | **Roles** | listar por proyecto · crear (código, nombre, descripción; código duplicado → 409) · fijar `SessionTTL` · borrar | `rbac.Service.CreateRole` / `SetRoleSessionTTL` / `DeleteRoleByCode` |
 | **Usuarios** | asignar un rol a un usuario por email (lo crea si no existe; código inexistente → 404) · revocar · listar los usuarios de un rol | `rbac.Service.AssignRoleByCode` / `RevokeRoleByCode` / `UsersInRole` + `authority.Module.UserByEmail`/`CreateUser` (mismo patrón que `config.EnsureRole`) |
-| **Auditoría** | listar (solo lectura) | cada operación mutadora de arriba escribe una fila `audit_log` (actor, acción, objetivo, `ts`) |
+| **Auditoría** | listar (solo lectura) | cada operación mutadora escribe una fila `audit_log` (actor, acción, objetivo, `ts`) |
 
 ### 8.4 — Reparto de código
 
@@ -438,7 +416,7 @@ la cookie del administrador adjunta. La ausencia de CORS no protege: CORS
 gobierna la lectura de la respuesta, no el envío de la petición.
 
 Por eso todas las rutas de mutación de `/api/admin/*` exigen además venir del
-propio origen de `iam` (`modules/admin/origin.go`, `RequireSameOrigin`): se
+propio origen de `iam` (`config/admin_origin.go`, `RequireSameOrigin`): se
 acepta si `Sec-Fetch-Site` es `same-origin` (lo mandan todos los navegadores
 vigentes y no es falsificable desde JavaScript) o si `Origin` coincide
 exactamente con `IAM_PANEL_ORIGIN`. Una petición sin ninguna de las dos

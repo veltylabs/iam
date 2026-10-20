@@ -19,7 +19,7 @@ func TestProductionAuthFailsWithoutGoogleEnv(t *testing.T) {
 		t.Fatalf("ids: %v", err)
 	}
 	t.Setenv(config.EnvGoogleClientID, "")
-	t.Setenv(config.EnvGoogleClientSecret, "")
+	t.Setenv(config.EnvGoogleSecret, "")
 	t.Setenv(config.EnvGoogleRedirectURL, "")
 
 	if _, _, err := config.NewProductionAuth(db, ids); err == nil {

@@ -21,7 +21,6 @@ type projectsPanel struct{ dom.Element }
 func (p *projectsPanel) Render() *dom.Element {
 	return html.Div().Class("iam-panel-view").Child(
 		html.H2().Text("Proyectos"),
-		html.Div().ID(IDProjectsSecret),
 		html.Div().ID(IDProjectsNew),
 		html.Div().ID(IDProjectsList),
 	)

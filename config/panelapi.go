@@ -5,8 +5,11 @@ import (
 )
 
 type AdminMeResponse struct {
-	Email string
-	Name  string
+	Email       string
+	Name        string
+	IsAdmin     bool
+	HasPasskey  bool
+	MultiFactor bool
 }
 
 func (m *AdminMeResponse) IsNil() bool { return m == nil }
@@ -14,11 +17,17 @@ func (m *AdminMeResponse) IsNil() bool { return m == nil }
 func (m *AdminMeResponse) EncodeFields(w model.FieldWriter) {
 	w.String("email", m.Email)
 	w.String("name", m.Name)
+	w.Bool("is_admin", m.IsAdmin)
+	w.Bool("has_passkey", m.HasPasskey)
+	w.Bool("multi_factor", m.MultiFactor)
 }
 
 func (m *AdminMeResponse) DecodeFields(r model.FieldReader) {
 	m.Email, _ = r.String("email")
 	m.Name, _ = r.String("name")
+	m.IsAdmin, _ = r.Bool("is_admin")
+	m.HasPasskey, _ = r.Bool("has_passkey")
+	m.MultiFactor, _ = r.Bool("multi_factor")
 }
 
 type AdminProjectView struct {
@@ -68,7 +77,8 @@ func (m *AdminProjectsResponse) DecodeFields(r model.FieldReader) {
 }
 
 type AdminCreateProjectRequest struct {
-	Name string
+	Name      string
+	PublicKey string
 }
 
 func (m *AdminCreateProjectRequest) IsNil() bool { return m == nil }
@@ -76,36 +86,39 @@ func (m *AdminCreateProjectRequest) IsNil() bool { return m == nil }
 func (m *AdminCreateProjectRequest) Schema() []model.Field {
 	return []model.Field{
 		{Name: "name", Type: model.Text()},
+		{Name: "public_key", Type: model.Text()},
 	}
 }
 
 func (m *AdminCreateProjectRequest) Pointers() []any {
-	return []any{&m.Name}
+	return []any{&m.Name, &m.PublicKey}
 }
 
 func (m *AdminCreateProjectRequest) EncodeFields(w model.FieldWriter) {
 	w.String("name", m.Name)
+	w.String("public_key", m.PublicKey)
 }
 
 func (m *AdminCreateProjectRequest) DecodeFields(r model.FieldReader) {
 	m.Name, _ = r.String("name")
+	m.PublicKey, _ = r.String("public_key")
 }
 
-type AdminSecretResponse struct {
-	Id           string
-	ClientSecret string // EN CLARO — única vez
+type AdminProjectKeyRequest struct {
+	ProjectId string
+	PublicKey string
 }
 
-func (m *AdminSecretResponse) IsNil() bool { return m == nil }
+func (m *AdminProjectKeyRequest) IsNil() bool { return m == nil }
 
-func (m *AdminSecretResponse) EncodeFields(w model.FieldWriter) {
-	w.String("id", m.Id)
-	w.String("client_secret", m.ClientSecret)
+func (m *AdminProjectKeyRequest) EncodeFields(w model.FieldWriter) {
+	w.String("project_id", m.ProjectId)
+	w.String("public_key", m.PublicKey)
 }
 
-func (m *AdminSecretResponse) DecodeFields(r model.FieldReader) {
-	m.Id, _ = r.String("id")
-	m.ClientSecret, _ = r.String("client_secret")
+func (m *AdminProjectKeyRequest) DecodeFields(r model.FieldReader) {
+	m.ProjectId, _ = r.String("project_id")
+	m.PublicKey, _ = r.String("public_key")
 }
 
 type AdminProjectIDRequest struct {

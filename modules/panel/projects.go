@@ -32,14 +32,10 @@ func wireProjects() {
 				done(err)
 				return
 			}
-			fetch.Post(config.PathAdminProjects).ContentTypeJSON().Body(buf).Send(func(resp *fetch.Response, err error) {
+			Fetch(fetch.Post(config.PathAdminProjects).ContentTypeJSON().Body(buf), func(resp *fetch.Response, err error) {
 				if err != nil || resp.Status != 201 {
 					done(fmt.Err("Failed to create project"))
 					return
-				}
-				var secretResp config.AdminSecretResponse
-				if err := json.Decode(resp.Body(), &secretResp); err == nil {
-					renderSecret(secretResp.ClientSecret)
 				}
 				done(nil)
 				loadProjectsList()
@@ -49,20 +45,12 @@ func wireProjects() {
 	}
 }
 
-func renderSecret(secret string) {
-	el := html.Div().Class("iam-secret-box").Child(
-		html.P().Text("Guardá este client_secret. Se muestra una sola vez. Copialo ahora:"),
-		html.Code().Text(secret),
-	)
-	_ = dom.Render(IDProjectsSecret, el)
-}
-
 func setContainerText(id, text string) {
 	_ = dom.Render(id, html.Div().Text(text))
 }
 
 func loadProjectsList() {
-	fetch.Get(config.PathAdminProjects).Send(func(resp *fetch.Response, err error) {
+	Fetch(fetch.Get(config.PathAdminProjects), func(resp *fetch.Response, err error) {
 		if err != nil || resp.Status != 200 {
 			setContainerText(IDProjectsList, "Error al cargar la lista de proyectos.")
 			return
@@ -94,17 +82,20 @@ func loadProjectsList() {
 				statusText = "Activo"
 			}
 
-			btnRotate := html.Button().Text("Regenerar secreto")
-			btnRotate.OnClick(func(event dom.Event) {
-				req := &config.AdminProjectIDRequest{ProjectId: pID}
+			keyInputID := "key-" + pID
+			inputKey := html.Input("text").ID(keyInputID).Attr("placeholder", "Nueva clave pública")
+			btnKey := html.Button().Text("Cambiar clave pública")
+			btnKey.OnClick(func(event dom.Event) {
+				ref, ok := dom.Get(keyInputID)
+				if !ok || ref.Value() == "" {
+					return
+				}
+				req := &config.AdminProjectKeyRequest{ProjectId: pID, PublicKey: ref.Value()}
 				var buf []byte
 				_ = json.Encode(req, &buf)
-				fetch.Post(config.PathAdminProjectRotate).ContentTypeJSON().Body(buf).Send(func(r *fetch.Response, err error) {
+				Fetch(fetch.Post(config.PathAdminProjectKey).ContentTypeJSON().Body(buf), func(r *fetch.Response, err error) {
 					if err == nil && r.Status == 200 {
-						var secretResp config.AdminSecretResponse
-						if err := json.Decode(r.Body(), &secretResp); err == nil {
-							renderSecret(secretResp.ClientSecret)
-						}
+						loadProjectsList()
 					}
 				})
 			})
@@ -118,7 +109,7 @@ func loadProjectsList() {
 				req := &config.AdminSetActiveRequest{ProjectId: pID, Active: !pActive}
 				var buf []byte
 				_ = json.Encode(req, &buf)
-				fetch.Post(config.PathAdminProjectActive).ContentTypeJSON().Body(buf).Send(func(r *fetch.Response, err error) {
+				Fetch(fetch.Post(config.PathAdminProjectActive).ContentTypeJSON().Body(buf), func(r *fetch.Response, err error) {
 					if err == nil && r.Status == 200 {
 						loadProjectsList()
 					}
@@ -130,7 +121,7 @@ func loadProjectsList() {
 				html.Td().Text(p.Name),
 				html.Td().Text(statusText),
 				html.Td().Text(formatEpoch(p.CreatedAt)),
-				html.Td().Child(btnRotate, btnToggle),
+				html.Td().Child(inputKey, btnKey, btnToggle),
 			)
 			tbody.Child(row)
 		}

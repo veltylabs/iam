@@ -10,11 +10,10 @@ import (
 )
 
 // adminPostPaths son las ocho rutas POST de /api/admin/* que mutan estado.
-// Todas se registran vía adminPost en routes.Register: cada una lleva la
-// guarda RequireSameOrigin además de RequirePanelAdmin.
+// Cada una lleva la guarda RequireSameOrigin como defensa en profundidad.
 var adminPostPaths = []string{
 	config.PathAdminProjects,
-	config.PathAdminProjectRotate,
+	config.PathAdminProjectKey,
 	config.PathAdminProjectActive,
 	config.PathAdminRoles,
 	config.PathAdminRoleTTL,
@@ -92,10 +91,11 @@ func TestAdminMutationAcceptsSameOrigin(t *testing.T) {
 // funcionan sin ninguna señal de origen.
 func TestAdminGetsDoNotRequireOrigin(t *testing.T) {
 	b, r := setupPanel(t, "admin@example.com")
-	u, err := b.Auth.CreateUser("admin@example.com", "Admin", "")
+	u, err := b.Auth.UserByEmail("admin@example.com")
 	if err != nil {
-		t.Fatalf("CreateUser: %v", err)
+		u, _ = b.Auth.CreateUser("admin@example.com", "Admin", "")
 	}
+	c := issueStepUp(t, b, u.Id)
 
 	gets := []string{
 		config.PathAdminMe,
@@ -105,7 +105,7 @@ func TestAdminGetsDoNotRequireOrigin(t *testing.T) {
 	for _, path := range gets {
 		// Sin ninguna cabecera de origen: los GET no la exigen.
 		ctx := &mock.Context{InMethod: "GET", InPath: path}
-		ctx.SetUserID(u.Id)
+		ctx.SetCookie(c)
 		r.Invoke("GET", path, ctx)
 		if ctx.Status != 200 {
 			t.Errorf("GET %s without origin signals: got %d, want 200", path, ctx.Status)

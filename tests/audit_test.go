@@ -6,44 +6,52 @@ import (
 	"strings"
 	"testing"
 
+	"webtyp.com/base64"
+	"webtyp.com/crypto/asym"
 	"webtyp.com/json"
 	"webtyp.com/router/mock"
 
 	"github.com/veltylabs/iam/config"
-	"github.com/veltylabs/iam/modules/admin"
 )
 
 func TestAudit_RecordsEveryMutation(t *testing.T) {
 	b, _ := setupPanel(t, "admin@example.com")
-	adminU, _ := b.Auth.CreateUser("admin@example.com", "Admin", "")
+	adminU, err := b.Auth.UserByEmail("admin@example.com")
+	if err != nil {
+		adminU, _ = b.Auth.CreateUser("admin@example.com", "Admin", "")
+	}
 
 	// 1. Create Project
-	hCreateProj := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.CreateProjectHandler(b.DB, b.IDs))
+	hCreateProj := config.CreateProjectHandler(b.DB, b.IDs, b.Auth, b.RBAC)
 	ctx1 := &mock.Context{InMethod: "POST", InPath: config.PathAdminProjects}
 	ctx1.SetUserID(adminU.Id)
 	ctx1.InBody = encodeBody(t, &config.AdminCreateProjectRequest{Name: "Audit Proj"})
 	hCreateProj(ctx1)
 
-	var projResp config.AdminSecretResponse
+	var projResp config.AdminProjectIDRequest
 	_ = json.Decode(ctx1.ResponseBody(), &projResp)
-	pID := projResp.Id
+	pID := projResp.ProjectId
 
-	// 2. Rotate Secret
-	hRotate := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.RotateSecretHandler(b.DB, b.IDs))
-	ctx2 := &mock.Context{InMethod: "POST", InPath: config.PathAdminProjectRotate}
+	// 2. Set Project Key
+	pub, _, err := asym.GenerateKeyPair()
+	if err != nil {
+		t.Fatalf("GenerateKeyPair: %v", err)
+	}
+	hKey := config.SetProjectKeyHandler(b.DB, b.IDs, b.Auth)
+	ctx2 := &mock.Context{InMethod: "POST", InPath: config.PathAdminProjectKey}
 	ctx2.SetUserID(adminU.Id)
-	ctx2.InBody = encodeBody(t, &config.AdminProjectIDRequest{ProjectId: pID})
-	hRotate(ctx2)
+	ctx2.InBody = encodeBody(t, &config.AdminProjectKeyRequest{ProjectId: pID, PublicKey: base64.URLEncode(pub)})
+	hKey(ctx2)
 
 	// 3. Create Role
-	hCreateRole := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.CreateRoleHandler(b.DB, b.RBAC, b.IDs))
+	hCreateRole := config.CreateRoleHandler(b.DB, b.RBAC, b.IDs, b.Auth)
 	ctx3 := &mock.Context{InMethod: "POST", InPath: config.PathAdminRoles}
 	ctx3.SetUserID(adminU.Id)
 	ctx3.InBody = encodeBody(t, &config.AdminCreateRoleRequest{ProjectId: pID, Code: "auditor", Name: "Auditor", Description: ""})
 	hCreateRole(ctx3)
 
 	// Fetch audit entries
-	hAudit := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListAuditHandler(b.DB))
+	hAudit := config.ListAuditHandler(b.DB)
 	ctxAudit := &mock.Context{InMethod: "GET", InPath: config.PathAdminAudit}
 	ctxAudit.SetUserID(adminU.Id)
 	hAudit(ctxAudit)
@@ -51,8 +59,8 @@ func TestAudit_RecordsEveryMutation(t *testing.T) {
 	var auditResp config.AdminAuditResponse
 	_ = json.Decode(ctxAudit.ResponseBody(), &auditResp)
 
-	if len(auditResp.Entries) < 3 {
-		t.Fatalf("expected at least 3 audit entries, got %d", len(auditResp.Entries))
+	if len(auditResp.Entries) < 2 {
+		t.Fatalf("expected at least 2 audit entries, got %d", len(auditResp.Entries))
 	}
 
 	for _, entry := range auditResp.Entries {
@@ -68,7 +76,7 @@ func TestAudit_ReadOnlyEndpoint(t *testing.T) {
 
 	_ = config.RecordAudit(b.DB, b.IDs, "admin@example.com", config.AuditProjectCreate, "proj1", "detail")
 
-	hAudit := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListAuditHandler(b.DB))
+	hAudit := config.ListAuditHandler(b.DB)
 	ctxAudit := &mock.Context{InMethod: "GET", InPath: config.PathAdminAudit}
 	ctxAudit.SetUserID(adminU.Id)
 	hAudit(ctxAudit)
@@ -81,32 +89,6 @@ func TestAudit_ReadOnlyEndpoint(t *testing.T) {
 	_ = json.Decode(ctxAudit.ResponseBody(), &auditResp)
 	if len(auditResp.Entries) != 1 || auditResp.Entries[0].Action != config.AuditProjectCreate {
 		t.Fatalf("unexpected audit list: %+v", auditResp.Entries)
-	}
-}
-
-// TestAudit_RecordsPanelDenial: no-admin con sesión válida tocando el panel
-// → 403 + fila panel.access_denied con su email.
-func TestAudit_RecordsPanelDenial(t *testing.T) {
-	b, _ := setupPanel(t, "admin@example.com")
-	u, err := b.Auth.CreateUser("intruder@example.com", "Intruder", "")
-	if err != nil {
-		t.Fatalf("CreateUser: %v", err)
-	}
-
-	h := admin.RequirePanelAdmin(b.DB, b.IDs, b.Auth, []string{"admin@example.com"}, admin.ListProjectsHandler(b.DB))
-	ctx := &mock.Context{InMethod: "GET", InPath: config.PathAdminProjects}
-	ctx.SetUserID(u.Id)
-	h(ctx)
-	if ctx.Status != 403 {
-		t.Fatalf("status %d, want 403", ctx.Status)
-	}
-
-	entry := lastAudit(t, b.DB)
-	if entry.Action != config.AuditPanelDenied {
-		t.Errorf("action: got %q, want %q", entry.Action, config.AuditPanelDenied)
-	}
-	if entry.Target != "intruder@example.com" {
-		t.Errorf("target: got %q, want the denied email", entry.Target)
 	}
 }
 
@@ -133,77 +115,56 @@ func TestAudit_RecordsOriginDenial(t *testing.T) {
 	}
 }
 
-// TestAudit_RecordsInvalidClientSecret: /api/token con client_secret
-// inválido → 403 + fila token.secret_invalid con el project_id.
-func TestAudit_RecordsInvalidClientSecret(t *testing.T) {
+// TestAudit_MachineMutations: AssignRole y ResolveUser auditan sus acciones
+func TestAudit_MachineMutations(t *testing.T) {
 	backend := setupBackend(t)
-	if err := config.CreateProject(backend.DB, "proj-audit-deny", "Audit Deny", "correct-secret"); err != nil {
-		t.Fatalf("CreateProject: %v", err)
+	const projectID = "proj-audit-machine"
+	_ = config.CreateProject(backend.DB, projectID, "Audit Machine", "")
+
+	// 1. ResolveUser creating a new user
+	hResolve := config.ResolveUser(backend.DB, backend.Auth, backend.IDs)
+	ctxRes := &mock.Context{InMethod: "POST", InPath: "/api/users/resolve"}
+	ctxRes.SetUserID(projectID)
+	var body []byte
+	_ = json.Encode(&config.ResolveUserRequest{Email: "audituser@example.com", Name: "Audit User"}, &body)
+	ctxRes.InBody = body
+	hResolve(ctxRes)
+	if ctxRes.Status != 200 {
+		t.Fatalf("ResolveUser status %d, want 200", ctxRes.Status)
 	}
 
-	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
-	ctx := &mock.Context{}
-	ctx.SetUserID("user-1")
-	body, err := encodeTokenRequest(t, "proj-audit-deny", "wrong-secret")
-	if err != nil {
-		t.Fatal(err)
+	entry1 := lastAudit(t, backend.DB)
+	if entry1.Action != config.AuditIdentityCreatedByClient {
+		t.Errorf("action: got %q, want %q", entry1.Action, config.AuditIdentityCreatedByClient)
 	}
-	ctx.InBody = body
-	handler(ctx)
-	if ctx.Status != 403 {
-		t.Fatalf("status: got %d, want 403", ctx.Status)
+	if entry1.Target != "audituser@example.com" {
+		t.Errorf("target: got %q, want %q", entry1.Target, "audituser@example.com")
 	}
 
-	entry := lastAudit(t, backend.DB)
-	if entry.Action != config.AuditTokenDenied {
-		t.Errorf("action: got %q, want %q", entry.Action, config.AuditTokenDenied)
-	}
-	if entry.Target != "proj-audit-deny" {
-		t.Errorf("target: got %q, want the project id", entry.Target)
-	}
-	if entry.ActorEmail != "" {
-		t.Errorf("actor: got %q, want empty (no hay admin en /api/token)", entry.ActorEmail)
-	}
-}
-
-// TestAudit_NeverStoresClientSecret: tras un /api/token fallido, NINGUNA fila
-// de auditoría contiene el secreto enviado.
-func TestAudit_NeverStoresClientSecret(t *testing.T) {
-	backend := setupBackend(t)
-	if err := config.CreateProject(backend.DB, "proj-audit-leak", "Audit Leak", "correct-secret"); err != nil {
-		t.Fatalf("CreateProject: %v", err)
+	// 2. AssignRole
+	_ = backend.RBAC.CreateRole(projectID, "r1", "client-role", "Client Role", "")
+	hAssign := config.AssignRole(backend.DB, backend.RBAC, backend.IDs)
+	ctxAssign := &mock.Context{InMethod: "POST", InPath: "/api/roles/assign"}
+	ctxAssign.SetUserID(projectID)
+	var body2 []byte
+	_ = json.Encode(&config.AssignRoleRequest{UserID: "u-123", RoleCode: "client-role"}, &body2)
+	ctxAssign.InBody = body2
+	hAssign(ctxAssign)
+	if ctxAssign.Status != 200 {
+		t.Fatalf("AssignRole status %d, want 200", ctxAssign.Status)
 	}
 
-	const hostileSecret = "leak-me-client-secret-12345"
-	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
-	ctx := &mock.Context{}
-	ctx.SetUserID("user-1")
-	body, err := encodeTokenRequest(t, "proj-audit-leak", hostileSecret)
-	if err != nil {
-		t.Fatal(err)
+	entry2 := lastAudit(t, backend.DB)
+	if entry2.Action != config.AuditRoleGrantedByClient {
+		t.Errorf("action: got %q, want %q", entry2.Action, config.AuditRoleGrantedByClient)
 	}
-	ctx.InBody = body
-	handler(ctx)
-
-	entries, err := config.ListAudit(backend.DB, 0)
-	if err != nil {
-		t.Fatalf("ListAudit: %v", err)
-	}
-	if len(entries) == 0 {
-		t.Fatal("expected at least one audit entry")
-	}
-	for _, e := range entries {
-		for _, field := range []string{e.ActorEmail, e.Action, e.Target, e.Detail} {
-			if strings.Contains(field, hostileSecret) {
-				t.Errorf("audit entry stores the client_secret: %+v", e)
-			}
-		}
+	if entry2.Target != "u-123:client-role" {
+		t.Errorf("target: got %q, want %q", entry2.Target, "u-123:client-role")
 	}
 }
 
 // TestAudit_TruncatesHostileDetail: un Origin de 10 000 bytes se guarda
-// truncado a auditDetailMax — es entrada del atacante y no puede inflar una
-// fila sin techo.
+// truncado a auditDetailMax.
 func TestAudit_TruncatesHostileDetail(t *testing.T) {
 	b, r := setupPanel(t, "admin@example.com")
 

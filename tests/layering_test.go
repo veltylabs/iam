@@ -132,17 +132,17 @@ func TestPanelViewsInViewGo(t *testing.T) {
 // /api/ — la convención worker-first del ecosistema (I-8).
 func TestAdminPathsAreUnderAPIPrefix(t *testing.T) {
 	paths := map[string]string{
-		"PathAdminMe":            config.PathAdminMe,
-		"PathAdminProjects":      config.PathAdminProjects,
-		"PathAdminProjectRotate": config.PathAdminProjectRotate,
+		"PathAdminMe":         config.PathAdminMe,
+		"PathAdminProjects":   config.PathAdminProjects,
+		"PathAdminProjectKey": config.PathAdminProjectKey,
 		"PathAdminProjectActive": config.PathAdminProjectActive,
-		"PathAdminRoles":         config.PathAdminRoles,
-		"PathAdminRoleTTL":       config.PathAdminRoleTTL,
-		"PathAdminRoleDelete":    config.PathAdminRoleDelete,
-		"PathAdminRoleUsers":     config.PathAdminRoleUsers,
-		"PathAdminUserAssign":    config.PathAdminUserAssign,
-		"PathAdminUserRevoke":    config.PathAdminUserRevoke,
-		"PathAdminAudit":         config.PathAdminAudit,
+		"PathAdminRoles":      config.PathAdminRoles,
+		"PathAdminRoleTTL":    config.PathAdminRoleTTL,
+		"PathAdminRoleDelete": config.PathAdminRoleDelete,
+		"PathAdminRoleUsers":  config.PathAdminRoleUsers,
+		"PathAdminUserAssign": config.PathAdminUserAssign,
+		"PathAdminUserRevoke": config.PathAdminUserRevoke,
+		"PathAdminAudit":      config.PathAdminAudit,
 	}
 	for name, path := range paths {
 		if !strings.HasPrefix(path, "/api/") {
@@ -151,23 +151,9 @@ func TestAdminPathsAreUnderAPIPrefix(t *testing.T) {
 	}
 }
 
-// TestNoLocalQueryParser: modules/admin/ no tiene su propio parser de query
-// string — usa router.QueryParam (Restricción #2).
-func TestNoLocalQueryParser(t *testing.T) {
-	entries, err := os.ReadDir("../modules/admin")
-	if err != nil {
-		t.Fatalf("ReadDir modules/admin: %v", err)
-	}
-	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), ".go") {
-			continue
-		}
-		content, err := os.ReadFile("../modules/admin/" + e.Name())
-		if err != nil {
-			t.Fatalf("ReadFile %s: %v", e.Name(), err)
-		}
-		if strings.Contains(string(content), "func getQueryParam") {
-			t.Errorf("modules/admin/%s still defines a local getQueryParam", e.Name())
-		}
+// TestNoModulesAdmin proves modules/admin was deleted.
+func TestNoModulesAdmin(t *testing.T) {
+	if _, err := os.Stat("../modules/admin"); !os.IsNotExist(err) {
+		t.Fatalf("modules/admin must not exist: %v", err)
 	}
 }
