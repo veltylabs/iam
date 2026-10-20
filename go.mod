@@ -6,18 +6,23 @@ require (
 	webtyp.com/auth v0.0.75
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.39
+	webtyp.com/components v0.8.31
 	webtyp.com/crypto v0.0.28
+	webtyp.com/css v0.4.30
 	webtyp.com/ddl v0.0.22
+	webtyp.com/deploy v0.2.111
 	webtyp.com/dom v0.13.26
 	webtyp.com/env v0.1.0
 	webtyp.com/fetch v0.1.29
 	webtyp.com/fmt v1.0.0
 	webtyp.com/form v0.4.41
+	webtyp.com/github v0.0.3
 	webtyp.com/goflare v0.5.42
 	webtyp.com/html v0.0.27
 	webtyp.com/image v0.1.19
 	webtyp.com/json v0.5.30
 	webtyp.com/jwt v0.1.24
+	webtyp.com/lang v0.1.7
 	webtyp.com/layout v0.3.50
 	webtyp.com/model v0.2.3
 	webtyp.com/orm v0.12.8
@@ -30,6 +35,8 @@ require (
 	webtyp.com/time v0.5.8
 	webtyp.com/unixid v0.3.0
 	webtyp.com/user v0.3.14
+	webtyp.com/webauthn v0.1.6
+	webtyp.com/widget v0.6.41
 )
 
 require (
@@ -49,12 +56,9 @@ require (
 	webtyp.com/await v0.1.2 // indirect
 	webtyp.com/color v0.1.3 // indirect
 	webtyp.com/command v0.0.4 // indirect
-	webtyp.com/components v0.8.31 // indirect
 	webtyp.com/context v0.0.23 // indirect
-	webtyp.com/css v0.4.30 // indirect
-	webtyp.com/date v0.0.10 // indirect
+	webtyp.com/date v0.0.11 // indirect
 	webtyp.com/dbus v0.1.1 // indirect
-	webtyp.com/deploy v0.2.111 // indirect
 	webtyp.com/device v0.1.0 // indirect
 	webtyp.com/escape v0.1.0 // indirect
 	webtyp.com/events v0.0.6 // indirect
@@ -63,19 +67,15 @@ require (
 	webtyp.com/font v0.0.6 // indirect
 	webtyp.com/ghaction v0.1.2 // indirect
 	webtyp.com/git v0.0.9 // indirect
-	webtyp.com/github v0.0.3 // indirect
 	webtyp.com/gobuild v0.0.28 // indirect
 	webtyp.com/input v0.0.20 // indirect
 	webtyp.com/js v0.1.2 // indirect
 	webtyp.com/jsvalue v0.1.7 // indirect
 	webtyp.com/keyring v0.2.9 // indirect
-	webtyp.com/lang v0.1.7 // indirect
 	webtyp.com/modfind v0.0.11 // indirect
 	webtyp.com/msgtype v0.1.0 // indirect
 	webtyp.com/pwa v0.2.0 // indirect
 	webtyp.com/sitec v0.2.57 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.32 // indirect
-	webtyp.com/webauthn v0.1.6 // indirect
-	webtyp.com/widget v0.6.41 // indirect
 )
