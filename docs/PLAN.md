@@ -2,8 +2,10 @@
 PLAN: "refactor: typed instants of webtyp/time v0.6 in iam — every instant field is time.Unix or time.Nano, no unit arithmetic"
 EXECUTOR: jules
 REVIEWER: none
-STATUS: running
+STATUS: review
 SESSION: 18268145037345846275
+PR: https://github.com/veltylabs/iam/pull/8
+REVIEWED_COMMIT: bb3309fde42ff248e0855815ad6af89dc74f6def
 ---
 
 > Read AGENTS.md at the repo root before any change. This plan is complete: do not guess; if something does not fit, stop and ask in the PR.
