@@ -120,7 +120,7 @@ func loadProjectsList() {
 				html.Td().Text(p.Id),
 				html.Td().Text(p.Name),
 				html.Td().Text(statusText),
-				html.Td().Text(formatEpoch(p.CreatedAt)),
+				html.Td().Text(formatEpoch(time.Unix(p.CreatedAt))),
 				html.Td().Child(inputKey, btnKey, btnToggle),
 			)
 			tbody.Child(row)
@@ -130,9 +130,9 @@ func loadProjectsList() {
 	})
 }
 
-func formatEpoch(sec int64) string {
+func formatEpoch(sec time.Unix) string {
 	if sec == 0 {
 		return "-"
 	}
-	return time.FormatDateTime(sec * 1e9)
+	return time.FormatDateTime(sec)
 }

@@ -9,6 +9,7 @@ import (
 	tinyjwt "webtyp.com/jwt"
 	"webtyp.com/model"
 	"webtyp.com/router"
+	"webtyp.com/time"
 )
 
 // Nombres convencionales de las variables de entorno. Están aquí para que
@@ -117,7 +118,7 @@ func (c *Consumer) Authn() router.Middleware {
 			}
 			ctx.SetUserID(id.Claims.Sub)
 			SetIdentity(ctx, id)
-			c.cache.Set(id.Claims.Sub, id.Claims.Scope, id.Claims.Exp)
+			c.cache.Set(id.Claims.Sub, id.Claims.Scope, time.Unix(id.Claims.Exp))
 			next(ctx)
 		}
 	}

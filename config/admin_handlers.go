@@ -66,7 +66,7 @@ func ListProjectsHandler(db *orm.DB) router.HandlerFunc {
 				Id:        p.Id,
 				Name:      p.Name,
 				Active:    p.Active != 0,
-				CreatedAt: p.CreatedAt,
+				CreatedAt: int64(p.CreatedAt),
 			})
 		}
 		ctx.WriteStatus(200)
@@ -367,7 +367,7 @@ func ListAuditHandler(db *orm.DB) router.HandlerFunc {
 				Action:     e.Action,
 				Target:     e.Target,
 				Detail:     e.Detail,
-				CreatedAt:  e.CreatedAt,
+				CreatedAt:  int64(e.CreatedAt),
 			})
 		}
 		ctx.WriteStatus(200)

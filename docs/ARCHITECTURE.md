@@ -194,7 +194,7 @@ acoplamiento semántico.
 
 ### 6.3 — TTL diferenciado por rol
 
-`rbac.Role` gana un campo `SessionTTL int64` (0 = usar el default). El
+`rbac.Role` gana un campo `SessionTTL time.Unix` (0 = usar el default). El
 default es **30 minutos**. Al emitir un token de autorización, `iam` usa
 el **más restrictivo** (menor) entre los `SessionTTL` de los roles que el
 usuario tiene en ese proyecto — cerrado por defecto: un rol sin

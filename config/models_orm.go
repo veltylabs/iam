@@ -5,21 +5,24 @@ package config
 import (
 	"webtyp.com/model"
 	"webtyp.com/orm"
+	"webtyp.com/time"
 )
 
 type Project struct {
-	Id string
-	Name string
+	Id              string
+	Name            string
 	ClientPublicKey string
-	CreatedAt int64
-	Active int64
+	CreatedAt       time.Unix
+	Active          int64
 }
 
 func (m *Project) ModelName() string { return "project" }
 
 func (m *Project) Schema() []model.Field { return ProjectModel.Fields }
 
-func (m *Project) Pointers() []any { return []any{&m.Id, &m.Name, &m.ClientPublicKey, &m.CreatedAt, &m.Active} }
+func (m *Project) Pointers() []any {
+	return []any{&m.Id, &m.Name, &m.ClientPublicKey, (*int64)(&m.CreatedAt), &m.Active}
+}
 
 func (m *Project) IsNil() bool { return m == nil }
 
@@ -27,24 +30,34 @@ func (m *Project) EncodeFields(w model.FieldWriter) {
 	w.String("id", m.Id)
 	w.String("name", m.Name)
 	w.String("client_public_key", m.ClientPublicKey)
-	w.Int("created_at", m.CreatedAt)
+	w.Int("created_at", int64(m.CreatedAt))
 	w.Int("active", m.Active)
 }
 
 func (m *Project) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("id"); ok { m.Id = v }
-	if v, ok := r.String("name"); ok { m.Name = v }
-	if v, ok := r.String("client_public_key"); ok { m.ClientPublicKey = v }
-	if v, ok := r.Int("created_at"); ok { m.CreatedAt = v }
-	if v, ok := r.Int("active"); ok { m.Active = v }
+	if v, ok := r.String("id"); ok {
+		m.Id = v
+	}
+	if v, ok := r.String("name"); ok {
+		m.Name = v
+	}
+	if v, ok := r.String("client_public_key"); ok {
+		m.ClientPublicKey = v
+	}
+	if v, ok := r.Int("created_at"); ok {
+		m.CreatedAt = time.Unix(v)
+	}
+	if v, ok := r.Int("active"); ok {
+		m.Active = v
+	}
 }
 
 type ProjectList []*Project
 
-func (s *ProjectList) Len() int             { return len(*s) }
-func (s *ProjectList) At(i int) model.Fielder { return (*s)[i] }
-func (s *ProjectList) Append() model.Fielder  { v := &Project{}; *s = append(*s, v); return v }
-func (s *ProjectList) IsNil() bool          { return s == nil }
+func (s *ProjectList) Len() int                         { return len(*s) }
+func (s *ProjectList) At(i int) model.Fielder           { return (*s)[i] }
+func (s *ProjectList) Append() model.Fielder            { v := &Project{}; *s = append(*s, v); return v }
+func (s *ProjectList) IsNil() bool                      { return s == nil }
 func (s *ProjectList) EncodeFields(_ model.FieldWriter) {}
 func (s *ProjectList) DecodeFields(_ model.FieldReader) {}
 
@@ -53,17 +66,17 @@ func (m *Project) Validate(action byte) error {
 }
 
 var Project_ = struct {
-	Id string
-	Name string
+	Id              string
+	Name            string
 	ClientPublicKey string
-	CreatedAt string
-	Active string
+	CreatedAt       string
+	Active          string
 }{
-	Id: "id",
-	Name: "name",
+	Id:              "id",
+	Name:            "name",
 	ClientPublicKey: "client_public_key",
-	CreatedAt: "created_at",
-	Active: "active",
+	CreatedAt:       "created_at",
+	Active:          "active",
 }
 
 func ReadOneProject(qb *orm.QB, model *Project) (*Project, error) {
@@ -84,19 +97,21 @@ func ReadAllProject(qb *orm.QB) (ProjectList, error) {
 }
 
 type AuditEntry struct {
-	Id string
+	Id         string
 	ActorEmail string
-	Action string
-	Target string
-	Detail string
-	CreatedAt int64
+	Action     string
+	Target     string
+	Detail     string
+	CreatedAt  time.Unix
 }
 
 func (m *AuditEntry) ModelName() string { return "audit_entry" }
 
 func (m *AuditEntry) Schema() []model.Field { return AuditEntryModel.Fields }
 
-func (m *AuditEntry) Pointers() []any { return []any{&m.Id, &m.ActorEmail, &m.Action, &m.Target, &m.Detail, &m.CreatedAt} }
+func (m *AuditEntry) Pointers() []any {
+	return []any{&m.Id, &m.ActorEmail, &m.Action, &m.Target, &m.Detail, (*int64)(&m.CreatedAt)}
+}
 
 func (m *AuditEntry) IsNil() bool { return m == nil }
 
@@ -106,24 +121,36 @@ func (m *AuditEntry) EncodeFields(w model.FieldWriter) {
 	w.String("action", m.Action)
 	w.String("target", m.Target)
 	w.String("detail", m.Detail)
-	w.Int("created_at", m.CreatedAt)
+	w.Int("created_at", int64(m.CreatedAt))
 }
 
 func (m *AuditEntry) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("id"); ok { m.Id = v }
-	if v, ok := r.String("actor_email"); ok { m.ActorEmail = v }
-	if v, ok := r.String("action"); ok { m.Action = v }
-	if v, ok := r.String("target"); ok { m.Target = v }
-	if v, ok := r.String("detail"); ok { m.Detail = v }
-	if v, ok := r.Int("created_at"); ok { m.CreatedAt = v }
+	if v, ok := r.String("id"); ok {
+		m.Id = v
+	}
+	if v, ok := r.String("actor_email"); ok {
+		m.ActorEmail = v
+	}
+	if v, ok := r.String("action"); ok {
+		m.Action = v
+	}
+	if v, ok := r.String("target"); ok {
+		m.Target = v
+	}
+	if v, ok := r.String("detail"); ok {
+		m.Detail = v
+	}
+	if v, ok := r.Int("created_at"); ok {
+		m.CreatedAt = time.Unix(v)
+	}
 }
 
 type AuditEntryList []*AuditEntry
 
-func (s *AuditEntryList) Len() int             { return len(*s) }
-func (s *AuditEntryList) At(i int) model.Fielder { return (*s)[i] }
-func (s *AuditEntryList) Append() model.Fielder  { v := &AuditEntry{}; *s = append(*s, v); return v }
-func (s *AuditEntryList) IsNil() bool          { return s == nil }
+func (s *AuditEntryList) Len() int                         { return len(*s) }
+func (s *AuditEntryList) At(i int) model.Fielder           { return (*s)[i] }
+func (s *AuditEntryList) Append() model.Fielder            { v := &AuditEntry{}; *s = append(*s, v); return v }
+func (s *AuditEntryList) IsNil() bool                      { return s == nil }
 func (s *AuditEntryList) EncodeFields(_ model.FieldWriter) {}
 func (s *AuditEntryList) DecodeFields(_ model.FieldReader) {}
 
@@ -132,19 +159,19 @@ func (m *AuditEntry) Validate(action byte) error {
 }
 
 var AuditEntry_ = struct {
-	Id string
+	Id         string
 	ActorEmail string
-	Action string
-	Target string
-	Detail string
-	CreatedAt string
+	Action     string
+	Target     string
+	Detail     string
+	CreatedAt  string
 }{
-	Id: "id",
+	Id:         "id",
 	ActorEmail: "actor_email",
-	Action: "action",
-	Target: "target",
-	Detail: "detail",
-	CreatedAt: "created_at",
+	Action:     "action",
+	Target:     "target",
+	Detail:     "detail",
+	CreatedAt:  "created_at",
 }
 
 func ReadOneAuditEntry(qb *orm.QB, model *AuditEntry) (*AuditEntry, error) {
@@ -163,4 +190,3 @@ func ReadAllAuditEntry(qb *orm.QB) (AuditEntryList, error) {
 	)
 	return results, err
 }
-

@@ -138,7 +138,7 @@ func TestScopeDeniesWhenAbsent(t *testing.T) {
 }
 
 func TestScopeDeniesWhenExpired(t *testing.T) {
-	pastExp := time.Now()/1e9 - 1000
+	pastExp := int64(time.NowUnix()) - 1000
 	claims := tinyjwt.Claims{
 		Sub:   "user-exp",
 		Exp:   pastExp,
@@ -177,8 +177,8 @@ func TestScopeOverwritesSameUser(t *testing.T) {
 	makeToken := func(scope []string) string {
 		claims := tinyjwt.Claims{
 			Sub:   "user-over",
-			Exp:   time.Now()/1e9 + 3600,
-			Iat:   time.Now() / 1e9,
+			Exp:   int64(time.NowUnix()) + 3600,
+			Iat:   int64(time.NowUnix()),
 			Aud:   "proj-1",
 			Scope: scope,
 		}
