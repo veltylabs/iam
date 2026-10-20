@@ -9,7 +9,7 @@ import (
 type authzEntry struct {
 	userID  string
 	scope   []string
-	expires int64
+	expires time.Unix
 }
 
 type scopeCache struct {
@@ -17,10 +17,10 @@ type scopeCache struct {
 	entries []authzEntry
 }
 
-func (c *scopeCache) Set(userID string, scope []string, expires int64) {
+func (c *scopeCache) Set(userID string, scope []string, expires time.Unix) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	now := nowUnix()
+	now := time.NowUnix()
 	kept := c.entries[:0]
 	for _, e := range c.entries {
 		if e.expires > now && e.userID != userID {
@@ -33,7 +33,7 @@ func (c *scopeCache) Set(userID string, scope []string, expires int64) {
 func (c *scopeCache) Scope(userID string) ([]string, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	now := nowUnix()
+	now := time.NowUnix()
 	for _, e := range c.entries {
 		if e.userID == userID && e.expires > now {
 			return e.scope, true
@@ -41,5 +41,3 @@ func (c *scopeCache) Scope(userID string) ([]string, bool) {
 	}
 	return nil, false
 }
-
-func nowUnix() int64 { return time.Now() / 1e9 }

@@ -33,7 +33,7 @@ func RecordAudit(db *orm.DB, ids model.IDGenerator, actorEmail, action, target, 
 		Action:     action,
 		Target:     target,
 		Detail:     detail,
-		CreatedAt:  time.Now() / 1e9,
+		CreatedAt:  time.NowUnix(),
 	}
 	if err := db.Create(entry); err != nil {
 		fmt.Println("audit error:", err)

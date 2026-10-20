@@ -81,7 +81,7 @@ func CreateProject(db *orm.DB, id, name, publicKeyB64 string) error {
 		Id:              id,
 		Name:            name,
 		ClientPublicKey: publicKeyB64,
-		CreatedAt:       time.Now() / 1e9,
+		CreatedAt:       time.NowUnix(),
 		Active:          1,
 	})
 }

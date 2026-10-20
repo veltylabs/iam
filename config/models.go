@@ -13,7 +13,7 @@ var ProjectModel = model.Definition{
 		{Name: "id", Type: model.Text(), DB: &model.FieldDB{PK: true}},
 		{Name: "name", Type: model.Text()},
 		{Name: "client_public_key", Type: model.Text()},
-		{Name: "created_at", Type: model.Int()},
+		{Name: "created_at", Type: model.UnixTime()},
 		// active: 1 = activo, 0 = desactivado. Fila sin valor (previa a esta
 		// migración) se trata como ACTIVA — ver 1.5. Sin widget: no se edita en form.
 		{Name: "active", Type: model.Int()},
@@ -28,6 +28,6 @@ var AuditEntryModel = model.Definition{
 		{Name: "action", Type: model.Text()},
 		{Name: "target", Type: model.Text()},
 		{Name: "detail", Type: model.Text()},
-		{Name: "created_at", Type: model.Int()},
+		{Name: "created_at", Type: model.UnixTime()},
 	},
 }

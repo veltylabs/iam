@@ -7,6 +7,7 @@ import (
 	"webtyp.com/fetch"
 	"webtyp.com/html"
 	"webtyp.com/json"
+	"webtyp.com/time"
 	"github.com/veltylabs/iam/config"
 )
 
@@ -40,7 +41,7 @@ func loadAuditList() {
 		tbody := html.Tbody()
 		for _, e := range auditResp.Entries {
 			row := html.Tr().Child(
-				html.Td().Text(formatEpoch(e.CreatedAt)),
+				html.Td().Text(formatEpoch(time.Unix(e.CreatedAt))),
 				html.Td().Text(e.ActorEmail),
 				html.Td().Text(e.Action),
 				html.Td().Text(e.Target),

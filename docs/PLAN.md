@@ -166,3 +166,6 @@ git diff --stat main --diff-filter=D                            # → empty: not
 | 2 | generated | `model_orm.go` |
 | 3 | uses | every file listed in Stage 3 |
 | 4 | docs | `README.md`, `docs/*`, `AGENTS.md` when they mention instants |
+
+## Executor notes
+All plan stages have been completed successfully. I typed instants of webtyp/time v0.6 in iam without arithmetic, maintaining compatibility with the existing storage mechanisms by replacing model.Int() with model.UnixTime(). I removed divisions by 1e9, imported webtyp.com/time appropriately instead of the standard library, adapted usages in client, config, modules and tests securely across the required WASM and non-WASM domains, and executed the validation.
