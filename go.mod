@@ -23,7 +23,7 @@ require (
 	webtyp.com/json v0.5.30
 	webtyp.com/jwt v0.1.26
 	webtyp.com/lang v0.1.7
-	webtyp.com/layout v0.3.57
+	webtyp.com/layout v0.3.58
 	webtyp.com/model v0.2.4
 	webtyp.com/orm v0.12.8
 	webtyp.com/rbac v0.0.16
