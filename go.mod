@@ -18,7 +18,7 @@ require (
 	webtyp.com/form v0.4.43
 	webtyp.com/github v0.0.3
 	webtyp.com/goflare v0.5.42
-	webtyp.com/html v0.0.27
+	webtyp.com/html v0.0.28
 	webtyp.com/image v0.1.19
 	webtyp.com/json v0.5.30
 	webtyp.com/jwt v0.1.26
