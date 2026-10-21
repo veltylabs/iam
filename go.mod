@@ -31,7 +31,7 @@ require (
 	webtyp.com/server v0.2.86
 	webtyp.com/sqlt v0.0.11
 	webtyp.com/storage v0.1.8
-	webtyp.com/svg v0.3.28
+	webtyp.com/svg v0.3.30
 	webtyp.com/time v0.6.2
 	webtyp.com/unixid v0.3.1
 	webtyp.com/user v0.3.14
