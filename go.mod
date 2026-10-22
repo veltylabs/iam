@@ -17,7 +17,7 @@ require (
 	webtyp.com/fmt v1.0.0
 	webtyp.com/form v0.4.43
 	webtyp.com/github v0.0.3
-	webtyp.com/goflare v0.5.44
+	webtyp.com/goflare v0.5.45
 	webtyp.com/html v0.0.28
 	webtyp.com/image v0.1.19
 	webtyp.com/json v0.5.30
@@ -48,15 +48,12 @@ require (
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/image v0.47.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
-	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	howett.net/plist v1.0.1 // indirect
 	webtyp.com/artifacts v0.1.5 // indirect
 	webtyp.com/await v0.1.2 // indirect
 	webtyp.com/calendar v0.1.0 // indirect
 	webtyp.com/color v0.1.3 // indirect
-	webtyp.com/command v0.0.4 // indirect
 	webtyp.com/context v0.0.23 // indirect
 	webtyp.com/dbus v0.1.1 // indirect
 	webtyp.com/device v0.1.0 // indirect
@@ -66,7 +63,6 @@ require (
 	webtyp.com/files v0.0.4 // indirect
 	webtyp.com/font v0.0.6 // indirect
 	webtyp.com/ghaction v0.1.2 // indirect
-	webtyp.com/git v0.0.9 // indirect
 	webtyp.com/gobuild v0.0.28 // indirect
 	webtyp.com/input v0.0.20 // indirect
 	webtyp.com/js v0.1.3 // indirect
