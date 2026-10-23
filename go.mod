@@ -24,7 +24,7 @@ require (
 	webtyp.com/jwt v0.1.26
 	webtyp.com/lang v0.1.7
 	webtyp.com/layout v0.3.64
-	webtyp.com/model v0.2.4
+	webtyp.com/model v0.2.5
 	webtyp.com/orm v0.12.8
 	webtyp.com/rbac v0.0.16
 	webtyp.com/router v0.4.6
