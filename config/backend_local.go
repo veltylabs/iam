@@ -3,6 +3,7 @@
 package config
 
 import (
+	"webtyp.com/access"
 	"webtyp.com/auth/clientassertion"
 	"webtyp.com/env"
 	"webtyp.com/model"
@@ -25,6 +26,18 @@ func NewLocalBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 		return nil, err
 	}
 
+	accessMod, err := access.New(access.Deps{
+		DB:        db,
+		IDs:       ids,
+		Users:     authMod,
+		Roles:     rbacSvc,
+		ProjectID: IAMProjectID,
+		Assurance: model.AssuranceMultiFactor,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	adminEmails := PanelAdminList()
 	if len(adminEmails) == 0 {
 		if a := env.Arg("server_admin_emails"); a != "" {
@@ -33,7 +46,7 @@ func NewLocalBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 			adminEmails = []string{LocalScenarios[0].Email}
 		}
 	}
-	if err := EnsurePolicy(rbacSvc, authMod, adminEmails); err != nil {
+	if err := EnsurePolicy(rbacSvc, authMod, accessMod, adminEmails); err != nil {
 		return nil, err
 	}
 
@@ -44,6 +57,7 @@ func NewLocalBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 	authMod.Enable(ca)
 
 	return &Backend{
+		Access:    accessMod,
 		Auth:      authMod,
 		RBAC:      rbacSvc,
 		DB:        db,

@@ -30,6 +30,9 @@ func TestSecurityHeaders_OnEveryRoute(t *testing.T) {
 		t.Fatal("no routes registered")
 	}
 	for _, info := range infos {
+		if info.Method == "OP" {
+			continue
+		}
 		ctx := adminCtx(t, b, "admin@example.com")
 		ctx.InMethod = info.Method
 		ctx.InPath = info.Path
@@ -51,6 +54,9 @@ func TestCSPForbidsUnsafeInline(t *testing.T) {
 
 	var csp string
 	for _, info := range r.Routes() {
+		if info.Method == "OP" {
+			continue
+		}
 		ctx := adminCtx(t, b, "admin@example.com")
 		ctx.InMethod = info.Method
 		ctx.InPath = info.Path

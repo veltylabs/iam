@@ -94,7 +94,7 @@ Bearer con tokens de autorización por proyecto y cookie SSO entre
 `*.velty.cl` (Etapas 3-4) — todo ejecutado. `veltylabs/misitio` ya consume
 `iam` remotamente (dejó de montar su propio `authority.Module`/`rbac.Service`).
 Panel de administración completo (proyectos, lifecycle de `client_secret`,
-roles, usuarios y auditoría), servido por el mismo Worker con acceso controlado
+roles, usuarios y auditoría delegando en webtyp/access), servido por el mismo Worker con acceso controlado
 por `IAM_ADMIN_EMAILS` y transporte REST. El servicio pasó una auditoría de
 seguridad completa (open redirect, cabeceras, CSRF entre subdominios hermanos
 y auditoría de denegaciones) y la cadena de librerías compartidas aguas arriba

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"webtyp.com/access"
 	"webtyp.com/auth/authority"
 	"webtyp.com/auth/clientassertion"
 	"webtyp.com/env"
@@ -14,6 +15,7 @@ import (
 // generador de IDs — es el único lugar donde se orquesta
 // NewProductionAuth/NewLocalAuth.
 type Backend struct {
+	Access    *access.Module
 	Auth      *authority.Module
 	RBAC      *rbac.Service
 	DB        *orm.DB
@@ -34,8 +36,20 @@ func NewProductionBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 		return nil, err
 	}
 
+	accessMod, err := access.New(access.Deps{
+		DB:        db,
+		IDs:       ids,
+		Users:     authMod,
+		Roles:     rbacSvc,
+		ProjectID: IAMProjectID,
+		Assurance: model.AssuranceMultiFactor,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	adminEmails := PanelAdminList()
-	if err := EnsurePolicy(rbacSvc, authMod, adminEmails); err != nil {
+	if err := EnsurePolicy(rbacSvc, authMod, accessMod, adminEmails); err != nil {
 		return nil, err
 	}
 
@@ -46,6 +60,7 @@ func NewProductionBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 	authMod.Enable(ca)
 
 	return &Backend{
+		Access:    accessMod,
 		Auth:      authMod,
 		RBAC:      rbacSvc,
 		DB:        db,

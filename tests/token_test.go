@@ -70,7 +70,7 @@ func TestToken_ReturnsUserProfileAndClaims(t *testing.T) {
 		t.Fatal("cookie not set")
 	}
 
-	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.JWTSecret, backend.IDs)
+	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.Access, backend.JWTSecret, backend.IDs)
 	ctx := &mock.Context{}
 	ctx.SetUserID(projectID)
 
@@ -110,7 +110,7 @@ func TestResolveUser_CreatesThenReusesSameSub(t *testing.T) {
 	if err := config.CreateProject(backend.DB, projectID, "Proj One", ""); err != nil {
 		t.Fatalf("CreateProject: %v", err)
 	}
-	handler := config.ResolveUser(backend.DB, backend.Auth, backend.IDs)
+	handler := config.ResolveUser(backend.DB, backend.Auth, backend.Access, backend.IDs)
 
 	call := func() (int, config.ResolveUserResponse) {
 		ctx := &mock.Context{}

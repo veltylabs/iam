@@ -349,8 +349,8 @@ y queda registrada en la auditoría.
 |---|---|---|
 | **Proyectos** | listar · crear (asocia clave pública SPKI P-256 base64url) · fijar/rotar clave pública · desactivar | `config.CreateProject` / `config.SetProjectKey` / `config.SetProjectActive` — autenticación RFC 7523 (§6.4) |
 | **Roles** | listar por proyecto · crear (código, nombre, descripción; código duplicado → 409) · fijar `SessionTTL` · borrar | `rbac.Service.CreateRole` / `SetRoleSessionTTL` / `DeleteRoleByCode` |
-| **Usuarios** | asignar un rol a un usuario por email (lo crea si no existe; código inexistente → 404) · revocar · listar los usuarios de un rol | `rbac.Service.AssignRoleByCode` / `RevokeRoleByCode` / `UsersInRole` + `authority.Module.UserByEmail`/`CreateUser` (mismo patrón que `config.EnsureRole`) |
-| **Auditoría** | listar (solo lectura) | cada operación mutadora escribe una fila `audit_log` (actor, acción, objetivo, `ts`) |
+| **Usuarios** | asignar un rol a un usuario por email (lo crea si no existe; código inexistente → 404) · revocar · listar los usuarios de un rol | `access.Module` operations |
+| **Auditoría** | listar (solo lectura) | `access.Module` operations |
 
 ### 8.4 — Reparto de código
 
