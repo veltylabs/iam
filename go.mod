@@ -7,7 +7,7 @@ require (
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.39
 	webtyp.com/components v0.8.38
-	webtyp.com/crypto v0.0.28
+	webtyp.com/crypto v0.0.29
 	webtyp.com/css v0.4.30
 	webtyp.com/ddl v0.0.22
 	webtyp.com/deploy v0.2.112
