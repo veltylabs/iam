@@ -3,8 +3,10 @@ PLAN: "refactor!: adoptar webtyp/access para roles, asignaciones, bootstrap y au
 TAG: v0.0.54
 EXECUTOR: jules
 REVIEWER: none
-STATUS: running
+STATUS: review
 SESSION: 2146982922759046835
+PR: https://github.com/veltylabs/iam/pull/9
+REVIEWED_COMMIT: a657c7739cb6cbef06644700229453d5a6d4ec5d
 ---
 
 > Lee AGENTS.md en la raíz del repositorio antes de cualquier cambio.
