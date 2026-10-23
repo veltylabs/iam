@@ -4,6 +4,7 @@ import (
 	"webtyp.com/auth/authority"
 	"webtyp.com/ddl"
 	"webtyp.com/rbac"
+	accessmigrate "webtyp.com/access/migrate"
 )
 
 // MigrateAll reconcilia el esquema completo que iam necesita, en orden de
@@ -20,6 +21,9 @@ func MigrateAll(conn ddl.Execer, compiler ddl.Compiler) error {
 		return err
 	}
 	if err := rbac.Migrate(conn, compiler); err != nil {
+		return err
+	}
+	if err := accessmigrate.Migrate(conn, compiler); err != nil {
 		return err
 	}
 	return MigrateSchema(conn, compiler)

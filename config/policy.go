@@ -1,6 +1,7 @@
 package config
 
 import (
+	"webtyp.com/access"
 	"webtyp.com/auth/authority"
 	"webtyp.com/fmt"
 	"webtyp.com/model"
@@ -59,6 +60,14 @@ var clientPermDefs = [...]permDef{
 	{id: "perm_iam_client_role_grant", name: "Assign role", resource: ResourceRoleGrant, actions: model.Create},
 }
 
+func isAlreadyExistsErr(err error) bool {
+	if err == nil {
+		return true
+	}
+	msg := err.Error()
+	return fmt.Contains(msg, "already") || fmt.Contains(msg, "exists") || fmt.Contains(msg, "UNIQUE") || fmt.Contains(msg, "duplicate")
+}
+
 // EnsurePolicy creates both roles and their permissions idempotently, and
 // grants RoleIAMAdmin to every email in adminEmails (creating the user if
 // needed, via the existing EnsureRole). IAM_ADMIN_EMAILS is a SEED: removing
@@ -69,7 +78,7 @@ var clientPermDefs = [...]permDef{
 // returns a ddl.Execer that runs DDL only and cannot run the orm queries
 // seeding needs. The cost is ~2 + 2N D1 queries per isolate cold start
 // (N = admin emails). They are idempotent and data, not schema.
-func EnsurePolicy(rbacSvc *rbac.Service, authMod *authority.Module, adminEmails []string) error {
+func EnsurePolicy(rbacSvc *rbac.Service, authMod *authority.Module, accessMod *access.Module, adminEmails []string) error {
 	if rbacSvc == nil {
 		return fmt.Err("bootstrap: rbac service is nil")
 	}
@@ -78,8 +87,22 @@ func EnsurePolicy(rbacSvc *rbac.Service, authMod *authority.Module, adminEmails 
 	}
 
 	// 1. Ensure RoleIAMAdmin and assign adminEmails
-	if err := EnsureRole(rbacSvc, authMod, IAMProjectID, RoleIAMAdminID, RoleIAMAdmin, "IAM Admin", "Administrator of IAM", adminEmails); err != nil {
+	if err := accessMod.EnsureRole(RoleIAMAdmin, "IAM Admin", "Administrator of IAM", adminEmails); err != nil {
 		return err
+	}
+	adminRole, err := rbacSvc.GetRoleByCode(IAMProjectID, RoleIAMAdmin)
+	if err != nil {
+		return err
+	}
+
+	for _, res := range access.Resources() {
+		permID := "perm_" + string(res)
+		if err := rbacSvc.CreatePermission(IAMProjectID, permID, string(res), res, model.Create|model.Read|model.Update|model.Delete); err != nil && !isAlreadyExistsErr(err) {
+			return err
+		}
+		if err := rbacSvc.AssignPermission(IAMProjectID, adminRole.Id, permID); err != nil && !isAlreadyExistsErr(err) {
+			return err
+		}
 	}
 
 	// 2. Ensure RoleIAMAdmin permissions
@@ -88,7 +111,7 @@ func EnsurePolicy(rbacSvc *rbac.Service, authMod *authority.Module, adminEmails 
 		if err := rbacSvc.CreatePermission(IAMProjectID, p.id, p.name, p.resource, p.actions); err != nil && !isAlreadyExistsErr(err) {
 			return err
 		}
-		if err := rbacSvc.AssignPermission(IAMProjectID, RoleIAMAdminID, p.id); err != nil && !isAlreadyExistsErr(err) {
+		if err := rbacSvc.AssignPermission(IAMProjectID, adminRole.Id, p.id); err != nil && !isAlreadyExistsErr(err) {
 			return err
 		}
 	}

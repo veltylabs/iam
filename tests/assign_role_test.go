@@ -24,7 +24,7 @@ func TestAssignRoleUnknownCode404(t *testing.T) {
 		t.Fatalf("CreateUser: %v", err)
 	}
 
-	handler := config.AssignRole(backend.DB, backend.RBAC, backend.IDs)
+	handler := config.AssignRole(backend.DB, backend.RBAC, backend.Access, backend.IDs)
 	call := func(roleCode string) int {
 		ctx := &mock.Context{}
 		ctx.SetUserID(projectID)

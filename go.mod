@@ -3,7 +3,8 @@ module github.com/veltylabs/iam
 go 1.26.8
 
 require (
-	webtyp.com/auth v0.0.76
+	webtyp.com/access v0.0.3
+	webtyp.com/auth v0.0.79
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.39
 	webtyp.com/components v0.8.38
@@ -23,15 +24,15 @@ require (
 	webtyp.com/json v0.5.30
 	webtyp.com/jwt v0.1.26
 	webtyp.com/lang v0.1.9
-	webtyp.com/layout v0.3.64
+	webtyp.com/layout v0.3.69
 	webtyp.com/model v0.2.6
-	webtyp.com/orm v0.12.8
+	webtyp.com/orm v0.12.15
 	webtyp.com/rbac v0.0.21
-	webtyp.com/router v0.4.6
+	webtyp.com/router v0.4.8
 	webtyp.com/server v0.2.86
 	webtyp.com/sqlt v0.0.11
 	webtyp.com/storage v0.1.8
-	webtyp.com/svg v0.3.30
+	webtyp.com/svg v0.3.33
 	webtyp.com/time v0.6.2
 	webtyp.com/unixid v0.3.1
 	webtyp.com/user v0.3.14
@@ -64,7 +65,7 @@ require (
 	webtyp.com/font v0.0.6 // indirect
 	webtyp.com/ghaction v0.1.2 // indirect
 	webtyp.com/gobuild v0.0.28 // indirect
-	webtyp.com/input v0.0.20 // indirect
+	webtyp.com/input v0.0.26 // indirect
 	webtyp.com/js v0.1.3 // indirect
 	webtyp.com/jsvalue v0.1.7 // indirect
 	webtyp.com/keyring v0.2.9 // indirect

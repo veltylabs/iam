@@ -1,6 +1,7 @@
 package config
 
 import (
+	"webtyp.com/access"
 	"webtyp.com/auth/authority"
 	"webtyp.com/fmt"
 	"webtyp.com/model"
@@ -42,23 +43,16 @@ func RegisterRoutes(r router.Router, b *Backend, adminEmails []string) {
 
 	r.Get(PathHealth, Health()).Public()
 	r.Get(PathHealthDB, HealthDB(b.DB)).Requires(ResourceHealth, model.Read).RequiresMFA()
-	r.Post(PathToken, Token(b.DB, b.Auth, b.RBAC, b.JWTSecret, b.IDs)).Requires(ResourceToken, model.Create)
-	r.Post(PathUsersResolve, ResolveUser(b.DB, b.Auth, b.IDs)).Requires(ResourceIdentity, model.Create)
-	r.Post(PathRolesAssign, AssignRole(b.DB, b.RBAC, b.IDs)).Requires(ResourceRoleGrant, model.Create)
+	r.Post(PathToken, Token(b.DB, b.Auth, b.RBAC, b.Access, b.JWTSecret, b.IDs)).Requires(ResourceToken, model.Create)
+	r.Post(PathUsersResolve, ResolveUser(b.DB, b.Auth, b.Access, b.IDs)).Requires(ResourceIdentity, model.Create)
+	r.Post(PathRolesAssign, AssignRole(b.DB, b.RBAC, b.Access, b.IDs)).Requires(ResourceRoleGrant, model.Create)
 
 	r.Get(PathAdminMe, Me(b.DB, b.Auth, b.RBAC)).Authenticated()
 	r.Get(PathAdminProjects, ListProjectsHandler(b.DB)).Requires(ResourceProject, model.Read).RequiresMFA()
-	r.Post(PathAdminProjects, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, CreateProjectHandler(b.DB, b.IDs, b.Auth, b.RBAC))).Requires(ResourceProject, model.Create).RequiresMFA()
-	r.Post(PathAdminProjectKey, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, SetProjectKeyHandler(b.DB, b.IDs, b.Auth))).Requires(ResourceProject, model.Update).RequiresMFA()
-	r.Post(PathAdminProjectActive, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, SetActiveHandler(b.DB, b.IDs, b.Auth))).Requires(ResourceProject, model.Update).RequiresMFA()
-	r.Get(PathAdminRoles, ListRolesHandler(b.DB, b.RBAC)).Requires(ResourceRole, model.Read).RequiresMFA()
-	r.Post(PathAdminRoles, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, CreateRoleHandler(b.DB, b.RBAC, b.IDs, b.Auth))).Requires(ResourceRole, model.Create).RequiresMFA()
-	r.Post(PathAdminRoleTTL, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, SetRoleTTLHandler(b.DB, b.RBAC, b.IDs, b.Auth))).Requires(ResourceRole, model.Update).RequiresMFA()
-	r.Post(PathAdminRoleDelete, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, DeleteRoleHandler(b.DB, b.RBAC, b.IDs, b.Auth))).Requires(ResourceRole, model.Delete).RequiresMFA()
-	r.Get(PathAdminRoleUsers, ListRoleUsersHandler(b.DB, b.Auth, b.RBAC)).Requires(ResourceUserRole, model.Read).RequiresMFA()
-	r.Post(PathAdminUserAssign, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, AssignUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))).Requires(ResourceUserRole, model.Create).RequiresMFA()
-	r.Post(PathAdminUserRevoke, RequireSameOrigin(b.DB, b.IDs, b.Auth, b.Origin, RevokeUserHandler(b.DB, b.Auth, b.RBAC, b.IDs))).Requires(ResourceUserRole, model.Delete).RequiresMFA()
-	r.Get(PathAdminAudit, ListAuditHandler(b.DB)).Requires(ResourceAudit, model.Read).RequiresMFA()
+	r.Post(PathAdminProjects, RequireSameOrigin(b.DB, b.Access, b.IDs, b.Auth, b.Origin, CreateProjectHandler(b.DB, b.Access, b.IDs, b.Auth, b.RBAC))).Requires(ResourceProject, model.Create).RequiresMFA()
+	r.Post(PathAdminProjectKey, RequireSameOrigin(b.DB, b.Access, b.IDs, b.Auth, b.Origin, SetProjectKeyHandler(b.DB, b.Access, b.IDs, b.Auth))).Requires(ResourceProject, model.Update).RequiresMFA()
+	r.Post(PathAdminProjectActive, RequireSameOrigin(b.DB, b.Access, b.IDs, b.Auth, b.Origin, SetActiveHandler(b.DB, b.Access, b.IDs, b.Auth))).Requires(ResourceProject, model.Update).RequiresMFA()
+	b.Access.MountOperations(r.(router.OperationRegistry))
 
 	router.MountIntrospection(r, router.IntrospectionPath, nil).Requires(ResourceRoutes, model.Read).RequiresMFA()
 }
@@ -129,7 +123,7 @@ func (t *TokenResponse) DecodeFields(r model.FieldReader) {
 }
 
 // Token emite un token de autorización project-scoped mediante token exchange (RFC 8693).
-func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret []byte, ids model.IDGenerator) router.HandlerFunc {
+func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, accessMod *access.Module, secret []byte, ids model.IDGenerator) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
 		projectID := ctx.UserID()
@@ -146,7 +140,7 @@ func Token(db *orm.DB, authMod *authority.Module, rbacSvc *rbac.Service, secret 
 
 		sess, err := authMod.GetSession(body.SubjectToken)
 		if err != nil {
-			if aerr := RecordAudit(db, ids, projectID, AuditTokenDenied, projectID, ""); aerr != nil {
+			if aerr := accessMod.Record(projectID, AuditTokenDenied, projectID, ""); aerr != nil {
 				fmt.Println("audit:", aerr)
 			}
 			ctx.WriteStatus(401)
@@ -198,7 +192,7 @@ func (r *ResolveUserResponse) DecodeFields(fr model.FieldReader) {
 }
 
 // ResolveUser busca un usuario por email dentro de la identidad global de iam y lo crea si no existe.
-func ResolveUser(db *orm.DB, authMod *authority.Module, ids model.IDGenerator) router.HandlerFunc {
+func ResolveUser(db *orm.DB, authMod *authority.Module, accessMod *access.Module, ids model.IDGenerator) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
 		projectID := ctx.UserID()
@@ -220,7 +214,7 @@ func ResolveUser(db *orm.DB, authMod *authority.Module, ids model.IDGenerator) r
 				ctx.WriteStatus(500)
 				return
 			}
-			if aerr := RecordAudit(db, ids, projectID, AuditIdentityCreatedByClient, body.Email, ""); aerr != nil {
+			if aerr := accessMod.Record(projectID, AuditIdentityCreatedByClient, body.Email, ""); aerr != nil {
 				fmt.Println("audit:", aerr)
 			}
 		}
@@ -252,7 +246,7 @@ func (r *AssignRoleResponse) EncodeFields(w model.FieldWriter)  {}
 func (r *AssignRoleResponse) DecodeFields(fr model.FieldReader) {}
 
 // AssignRole concede roleCode al usuario en el proyecto del llamante.
-func AssignRole(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator) router.HandlerFunc {
+func AssignRole(db *orm.DB, rbacSvc *rbac.Service, accessMod *access.Module, ids model.IDGenerator) router.HandlerFunc {
 	return func(ctx router.Context) {
 		ctx.SetHeader("Content-Type", "application/json")
 		projectID := ctx.UserID()
@@ -279,7 +273,7 @@ func AssignRole(db *orm.DB, rbacSvc *rbac.Service, ids model.IDGenerator) router
 			ctx.WriteStatus(500)
 			return
 		}
-		if aerr := RecordAudit(db, ids, projectID, AuditRoleGrantedByClient, body.UserID+":"+body.RoleCode, ""); aerr != nil {
+		if aerr := accessMod.Record(projectID, AuditRoleGrantedByClient, body.UserID+":"+body.RoleCode, ""); aerr != nil {
 			fmt.Println("audit:", aerr)
 		}
 		ctx.WriteStatus(200)

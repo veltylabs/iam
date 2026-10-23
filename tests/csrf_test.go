@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"webtyp.com/json"
 	"testing"
 
 	"webtyp.com/router/mock"
@@ -15,11 +16,6 @@ var adminPostPaths = []string{
 	config.PathAdminProjects,
 	config.PathAdminProjectKey,
 	config.PathAdminProjectActive,
-	config.PathAdminRoles,
-	config.PathAdminRoleTTL,
-	config.PathAdminRoleDelete,
-	config.PathAdminUserAssign,
-	config.PathAdminUserRevoke,
 }
 
 // TestAdminMutationRejectsCrossSite: los ocho POST con el atacante hermano
@@ -80,7 +76,9 @@ func TestAdminMutationAcceptsSameOrigin(t *testing.T) {
 	ctx := adminCtx(t, b, "admin@example.com")
 	ctx.InMethod = "POST"
 	ctx.InPath = config.PathAdminProjects
-	ctx.InBody = encodeBody(t, &config.AdminCreateProjectRequest{Name: "Same Origin App"})
+	var body []byte
+	_ = json.Encode(&config.AdminCreateProjectRequest{Name: "Same Origin App"}, &body)
+	ctx.InBody = body
 	r.Invoke("POST", config.PathAdminProjects, ctx)
 	if ctx.Status != 201 {
 		t.Fatalf("POST %s same-origin: got %d, want 201", config.PathAdminProjects, ctx.Status)
@@ -100,7 +98,6 @@ func TestAdminGetsDoNotRequireOrigin(t *testing.T) {
 	gets := []string{
 		config.PathAdminMe,
 		config.PathAdminProjects,
-		config.PathAdminAudit,
 	}
 	for _, path := range gets {
 		// Sin ninguna cabecera de origen: los GET no la exigen.

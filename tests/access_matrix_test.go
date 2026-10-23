@@ -28,14 +28,6 @@ var adminRoutes = []struct {
 	{"POST", config.PathAdminProjects},
 	{"POST", config.PathAdminProjectKey},
 	{"POST", config.PathAdminProjectActive},
-	{"GET", config.PathAdminRoles},
-	{"POST", config.PathAdminRoles},
-	{"POST", config.PathAdminRoleTTL},
-	{"POST", config.PathAdminRoleDelete},
-	{"GET", config.PathAdminRoleUsers},
-	{"POST", config.PathAdminUserAssign},
-	{"POST", config.PathAdminUserRevoke},
-	{"GET", config.PathAdminAudit},
 	{"GET", router.IntrospectionPath},
 	{"GET", config.PathHealthDB},
 }
@@ -48,7 +40,7 @@ func setupAccessMatrix(t *testing.T) (*config.Backend, *mock.Router) {
 		Authn:     b.Auth.Authenticate(),
 		Authorize: config.Authorizer(b.RBAC),
 	})
-	if err := config.EnsurePolicy(b.RBAC, b.Auth, []string{"admin@example.com"}); err != nil {
+	if err := config.EnsurePolicy(b.RBAC, b.Auth, b.Access, []string{"admin@example.com"}); err != nil {
 		t.Fatalf("EnsurePolicy: %v", err)
 	}
 	config.RegisterRoutes(r, b, []string{"admin@example.com"})
@@ -99,15 +91,17 @@ func TestT3_NonAdminStepUp403(t *testing.T) {
 		t.Fatalf("CreateUser: %v", err)
 	}
 	c := issueStepUp(t, b, nonAdmin.Id)
-
-	for _, route := range adminRoutes {
-		ctx := &mock.Context{InMethod: route.method, InPath: route.path}
+	checkReq := func(method, path string, want int) {
+		ctx := &mock.Context{InMethod: method, InPath: path}
 		ctx.SetCookie(c)
-		r.Invoke(route.method, route.path, ctx)
-		if ctx.Status != 403 {
-			t.Errorf("T3 non-admin %s %s: got %d, want 403", route.method, route.path, ctx.Status)
+		r.Invoke(method, path, ctx)
+		if ctx.Status != want {
+			t.Errorf("T3 non-admin %s %s: got %d, want %d", method, path, ctx.Status, want)
 		}
 	}
+	checkReq("POST", config.PathAdminProjects, 403)
+	checkReq("POST", config.PathAdminProjectKey, 403)
+	checkReq("POST", config.PathAdminProjectActive, 403)
 }
 
 // T4: step-up session of an admin -> 200 on each GET route
@@ -119,31 +113,17 @@ func TestT4_AdminStepUp200(t *testing.T) {
 		_ = b.RBAC.AssignRole(config.IAMProjectID, adminU.Id, config.RoleIAMAdminID)
 	}
 	c := issueStepUp(t, b, adminU.Id)
-
-	_ = config.CreateProject(b.DB, "p1", "Project 1", "")
-	_ = b.RBAC.CreateRole("p1", "role-1", "r1", "Role 1", "")
-
-	type routeItem struct {
-		path   string
-		inPath string
-	}
-	getRoutes := []routeItem{
-		{path: config.PathAdminProjects, inPath: config.PathAdminProjects},
-		{path: config.PathAdminRoles, inPath: config.PathAdminRoles + "?project_id=p1"},
-		{path: config.PathAdminRoleUsers, inPath: config.PathAdminRoleUsers + "?project_id=p1&code=r1"},
-		{path: config.PathAdminAudit, inPath: config.PathAdminAudit},
-		{path: router.IntrospectionPath, inPath: router.IntrospectionPath},
-		{path: config.PathHealthDB, inPath: config.PathHealthDB},
-	}
-
-	for _, item := range getRoutes {
-		ctx := &mock.Context{InMethod: "GET", InPath: item.inPath}
+	checkReq := func(method, path string, want int) {
+		ctx := &mock.Context{InMethod: method, InPath: path}
 		ctx.SetCookie(c)
-		r.Invoke("GET", item.path, ctx)
-		if ctx.Status != 200 {
-			t.Errorf("T4 admin GET %s: got %d, want 200", item.path, ctx.Status)
+		r.Invoke(method, path, ctx)
+		if ctx.Status != want {
+			t.Errorf("T4 admin %s %s: got %d, want %d", method, path, ctx.Status, want)
 		}
 	}
+	checkReq("GET", config.PathAdminProjects, 200)
+	checkReq("GET", "/_routes", 200)
+	checkReq("GET", config.PathHealthDB, 200)
 }
 
 // T5: /api/token with no bearer; with an assertion for another URL (htu); replayed assertion
@@ -385,13 +365,13 @@ func TestEnsurePolicyIdempotent(t *testing.T) {
 	adminEmail := "admin@example.com"
 	u, _ := b.Auth.CreateUser(adminEmail, "Admin", "")
 
-	err1 := config.EnsurePolicy(b.RBAC, b.Auth, []string{adminEmail})
+	err1 := config.EnsurePolicy(b.RBAC, b.Auth, b.Access, []string{adminEmail})
 	if err1 != nil {
 		t.Fatalf("first EnsurePolicy: %v", err1)
 	}
 	roles1, _ := b.RBAC.GetUserRoles(config.IAMProjectID, u.Id)
 
-	err2 := config.EnsurePolicy(b.RBAC, b.Auth, []string{adminEmail})
+	err2 := config.EnsurePolicy(b.RBAC, b.Auth, b.Access, []string{adminEmail})
 	if err2 != nil {
 		t.Fatalf("second EnsurePolicy: %v", err2)
 	}

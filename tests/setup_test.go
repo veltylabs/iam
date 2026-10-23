@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"webtyp.com/router/security"
 	"fmt"
 	"os"
 	"strings"
@@ -100,12 +101,13 @@ func setupPanelWithOrigin(t *testing.T, adminEmail, origin string) (*config.Back
 		Authn:     b.Auth.Authenticate(),
 		Authorize: config.Authorizer(b.RBAC),
 	})
-	if err := config.EnsurePolicy(b.RBAC, b.Auth, []string{adminEmail}); err != nil {
+	if err := config.EnsurePolicy(b.RBAC, b.Auth, b.Access, []string{adminEmail}); err != nil {
 		t.Fatalf("EnsurePolicy: %v", err)
 	}
 	if u, err := b.Auth.UserByEmail(adminEmail); err == nil {
 		_ = b.RBAC.AssignRole(config.IAMProjectID, u.Id, config.RoleIAMClientID)
 	}
+	r.Use(security.Policy{}.AllowImages("https://lh3.googleusercontent.com").Middleware())
 	config.RegisterRoutes(r, b, []string{adminEmail})
 	return b, r
 }
@@ -183,18 +185,6 @@ func crossSiteCtx(t *testing.T, b *config.Backend, email string) *mock.Context {
 
 // lastAudit devuelve la última fila de auditoría, para afirmar sobre ella
 // sin repetir la consulta.
-func lastAudit(t *testing.T, db *orm.DB) config.AuditEntry {
-	t.Helper()
-	qb := db.Query(&config.AuditEntry{})
-	entries, err := config.ReadAllAuditEntry(qb)
-	if err != nil {
-		t.Fatalf("lastAudit: %v", err)
-	}
-	if len(entries) == 0 {
-		t.Fatalf("lastAudit: no audit entries")
-	}
-	return *entries[len(entries)-1]
-}
 
 // setupLocal arma el motor de desarrollo local, sin variables GOOGLE_*.
 func setupLocal(t *testing.T) (*orm.DB, *authority.Module, *rbac.Service, model.IDGenerator) {

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"webtyp.com/access"
 	"webtyp.com/auth/authority"
 	"webtyp.com/fmt"
 	"webtyp.com/model"
@@ -26,7 +27,7 @@ const auditDetailMax = 200
 
 // RequireSameOrigin envuelve un handler de mutación: 403 si la petición no
 // vino del propio origen de iam.
-func RequireSameOrigin(db *orm.DB, ids model.IDGenerator, authMod *authority.Module, expectedOrigin string, h router.HandlerFunc) router.HandlerFunc {
+func RequireSameOrigin(db *orm.DB, accessMod *access.Module, ids model.IDGenerator, authMod *authority.Module, expectedOrigin string, h router.HandlerFunc) router.HandlerFunc {
 	return func(ctx router.Context) {
 		fetchSite := ctx.GetHeader(HeaderSecFetchSite)
 		origin := ctx.GetHeader(HeaderOrigin)
@@ -44,7 +45,7 @@ func RequireSameOrigin(db *orm.DB, ids model.IDGenerator, authMod *authority.Mod
 		if len(detail) > auditDetailMax {
 			detail = detail[:auditDetailMax]
 		}
-		if err := RecordAudit(db, ids, adminEmail, AuditOriginDenied, adminEmail, detail); err != nil {
+		if err := accessMod.Record(adminEmail, AuditOriginDenied, adminEmail, detail); err != nil {
 			fmt.Println("audit:", err)
 		}
 		ctx.WriteStatus(403)

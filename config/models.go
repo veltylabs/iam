@@ -19,15 +19,3 @@ var ProjectModel = model.Definition{
 		{Name: "active", Type: model.Int()},
 	},
 }
-
-var AuditEntryModel = model.Definition{
-	Name: "audit_entry",
-	Fields: model.Fields{
-		{Name: "id", Type: model.Text(), DB: &model.FieldDB{PK: true}},
-		{Name: "actor_email", Type: model.Text()},
-		{Name: "action", Type: model.Text()},
-		{Name: "target", Type: model.Text()},
-		{Name: "detail", Type: model.Text()},
-		{Name: "created_at", Type: model.UnixTime()},
-	},
-}
