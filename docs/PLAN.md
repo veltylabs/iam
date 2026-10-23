@@ -3,6 +3,8 @@ PLAN: "refactor!: adoptar webtyp/access para roles, asignaciones, bootstrap y au
 TAG: v0.0.54
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 2146982922759046835
 ---
 
 > Lee AGENTS.md en la raíz del repositorio antes de cualquier cambio.
