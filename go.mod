@@ -72,7 +72,7 @@ require (
 	webtyp.com/keyring v0.2.9 // indirect
 	webtyp.com/modfind v0.0.11 // indirect
 	webtyp.com/msgtype v0.1.0 // indirect
-	webtyp.com/pwa v0.2.0 // indirect
+	webtyp.com/pwa v0.2.13 // indirect
 	webtyp.com/sitec v0.2.70 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.40 // indirect
