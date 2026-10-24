@@ -19,7 +19,7 @@ require (
 	webtyp.com/form v0.4.52
 	webtyp.com/github v0.0.3
 	webtyp.com/goflare v0.5.46
-	webtyp.com/html v0.0.29
+	webtyp.com/html v0.0.30
 	webtyp.com/image v0.1.19
 	webtyp.com/json v0.5.30
 	webtyp.com/jwt v0.1.26
