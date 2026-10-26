@@ -22,7 +22,7 @@ require (
 	webtyp.com/html v0.0.30
 	webtyp.com/image v0.1.19
 	webtyp.com/json v0.5.30
-	webtyp.com/jwt v0.1.26
+	webtyp.com/jwt v0.1.29
 	webtyp.com/lang v0.1.10
 	webtyp.com/layout v0.3.70
 	webtyp.com/model v0.2.6
