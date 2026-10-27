@@ -27,7 +27,7 @@ require (
 	webtyp.com/layout v0.3.76
 	webtyp.com/model v0.2.6
 	webtyp.com/orm v0.12.15
-	webtyp.com/rbac v0.0.21
+	webtyp.com/rbac v0.0.22
 	webtyp.com/router v0.4.9
 	webtyp.com/server v0.2.86
 	webtyp.com/sqlt v0.0.11
