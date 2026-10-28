@@ -7,7 +7,7 @@ require (
 	webtyp.com/auth v0.0.80
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.39
-	webtyp.com/components v0.8.51
+	webtyp.com/components v0.8.57
 	webtyp.com/crypto v0.0.30
 	webtyp.com/css v0.4.30
 	webtyp.com/ddl v0.0.22
@@ -25,7 +25,7 @@ require (
 	webtyp.com/jwt v0.1.29
 	webtyp.com/lang v0.1.10
 	webtyp.com/layout v0.3.76
-	webtyp.com/model v0.2.8
+	webtyp.com/model v0.2.9
 	webtyp.com/orm v0.12.15
 	webtyp.com/rbac v0.0.22
 	webtyp.com/router v0.4.9
