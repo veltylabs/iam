@@ -29,7 +29,7 @@ require (
 	webtyp.com/orm v0.12.20
 	webtyp.com/rbac v0.0.22
 	webtyp.com/router v0.4.12
-	webtyp.com/server v0.2.86
+	webtyp.com/server v0.2.99
 	webtyp.com/sqlt v0.0.11
 	webtyp.com/storage v0.1.8
 	webtyp.com/svg v0.3.33
