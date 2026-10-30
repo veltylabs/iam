@@ -10,7 +10,7 @@ require (
 	webtyp.com/components v0.8.57
 	webtyp.com/crypto v0.0.30
 	webtyp.com/css v0.4.30
-	webtyp.com/ddl v0.0.36
+	webtyp.com/ddl v0.0.37
 	webtyp.com/deploy v0.2.112
 	webtyp.com/dom v0.13.29
 	webtyp.com/env v0.1.3
