@@ -31,7 +31,7 @@ require (
 	webtyp.com/router v0.4.17
 	webtyp.com/server v0.2.103
 	webtyp.com/sqlt v0.0.11
-	webtyp.com/storage v0.1.8
+	webtyp.com/storage v0.1.18
 	webtyp.com/svg v0.3.33
 	webtyp.com/time v0.6.2
 	webtyp.com/unixid v0.3.1
