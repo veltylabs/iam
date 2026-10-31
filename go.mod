@@ -11,7 +11,7 @@ require (
 	webtyp.com/crypto v0.0.30
 	webtyp.com/css v0.4.30
 	webtyp.com/ddl v0.0.37
-	webtyp.com/deploy v0.2.112
+	webtyp.com/deploy v0.2.115
 	webtyp.com/dom v0.13.29
 	webtyp.com/env v0.1.3
 	webtyp.com/fetch v0.1.29
