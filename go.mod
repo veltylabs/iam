@@ -33,7 +33,7 @@ require (
 	webtyp.com/sqlt v0.0.11
 	webtyp.com/storage v0.1.18
 	webtyp.com/svg v0.3.33
-	webtyp.com/time v0.6.3
+	webtyp.com/time v0.6.4
 	webtyp.com/unixid v0.3.1
 	webtyp.com/user v0.3.14
 	webtyp.com/webauthn v0.1.16
