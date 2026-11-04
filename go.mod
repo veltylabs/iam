@@ -7,7 +7,7 @@ require (
 	webtyp.com/auth v0.0.80
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.39
-	webtyp.com/components v0.8.57
+	webtyp.com/components v0.8.63
 	webtyp.com/crypto v0.0.30
 	webtyp.com/css v0.4.30
 	webtyp.com/ddl v0.0.39
@@ -33,7 +33,7 @@ require (
 	webtyp.com/sqlt v0.0.11
 	webtyp.com/storage v0.1.18
 	webtyp.com/svg v0.3.33
-	webtyp.com/time v0.6.2
+	webtyp.com/time v0.6.3
 	webtyp.com/unixid v0.3.1
 	webtyp.com/user v0.3.14
 	webtyp.com/webauthn v0.1.16
@@ -74,7 +74,7 @@ require (
 	webtyp.com/ghaction v0.1.2 // indirect
 	webtyp.com/gobuild v0.0.28 // indirect
 	webtyp.com/icons v0.0.33 // indirect
-	webtyp.com/input v0.0.26 // indirect
+	webtyp.com/input v0.0.33 // indirect
 	webtyp.com/js v0.1.3 // indirect
 	webtyp.com/jsvalue v0.1.7 // indirect
 	webtyp.com/keyring v0.2.9 // indirect
