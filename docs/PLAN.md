@@ -2,6 +2,8 @@
 PLAN: "refactor: project dates in the admin panel on the admin's own clock (time.MachineZone)"
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 17305578921499336804
 ---
 
 > Read AGENTS.md at the repo root before any change.
