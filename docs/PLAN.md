@@ -2,8 +2,10 @@
 PLAN: "refactor: project dates in the admin panel on the admin's own clock (time.MachineZone)"
 EXECUTOR: jules
 REVIEWER: none
-STATUS: running
+STATUS: review
 SESSION: 17305578921499336804
+PR: https://github.com/veltylabs/iam/pull/10
+REVIEWED_COMMIT: e2f96e69bc9b1279cfc94b4516544eefc1766a0a
 ---
 
 > Read AGENTS.md at the repo root before any change.

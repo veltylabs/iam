@@ -134,5 +134,6 @@ func formatEpoch(sec time.Unix) string {
 	if sec == 0 {
 		return "-"
 	}
-	return time.FormatDateTime(sec)
+	// el reloj de quien administra: lo lee en su propio equipo
+	return time.MachineZone().DateTime(sec)
 }
