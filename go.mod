@@ -10,7 +10,7 @@ require (
 	webtyp.com/components v0.8.63
 	webtyp.com/crypto v0.0.30
 	webtyp.com/css v0.4.30
-	webtyp.com/ddl v0.0.39
+	webtyp.com/ddl v0.0.45
 	webtyp.com/deploy v0.2.115
 	webtyp.com/dom v0.13.29
 	webtyp.com/env v0.1.3
@@ -30,7 +30,7 @@ require (
 	webtyp.com/rbac v0.0.29
 	webtyp.com/router v0.4.17
 	webtyp.com/server v0.2.107
-	webtyp.com/sqlt v0.0.11
+	webtyp.com/sqlt v0.0.14
 	webtyp.com/storage v0.1.18
 	webtyp.com/svg v0.3.33
 	webtyp.com/time v0.6.4
