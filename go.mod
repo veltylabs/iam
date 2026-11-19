@@ -24,7 +24,7 @@ require (
 	webtyp.com/html v0.0.34
 	webtyp.com/json v0.5.40
 	webtyp.com/jwt v0.1.45
-	webtyp.com/lang v0.1.21
+	webtyp.com/lang v0.1.22
 	webtyp.com/layout v0.3.134
 	webtyp.com/model v0.2.26
 	webtyp.com/orm v0.12.42
