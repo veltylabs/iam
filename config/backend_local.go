@@ -6,6 +6,8 @@ import (
 	"webtyp.com/access"
 	"webtyp.com/auth/clientassertion"
 	"webtyp.com/env"
+	"webtyp.com/events/inprocess"
+	"webtyp.com/securityevent"
 	"webtyp.com/model"
 	"webtyp.com/orm"
 )
@@ -50,7 +52,11 @@ func NewLocalBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 		return nil, err
 	}
 
-	ca, err := clientassertion.New(db, ProjectKeys{DB: db}, panelOrigin, authMod.Notify)
+	caReport, err := securityevent.New(&inprocess.Broker{})
+	if err != nil {
+		return nil, err
+	}
+	ca, err := clientassertion.New(db, ProjectKeys{DB: db}, panelOrigin, caReport)
 	if err != nil {
 		return nil, err
 	}

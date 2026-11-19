@@ -71,7 +71,7 @@ func TestToken_ReturnsUserProfileAndClaims(t *testing.T) {
 	}
 
 	handler := config.Token(backend.DB, backend.Auth, backend.RBAC, backend.Access, backend.JWTSecret, backend.IDs)
-	ctx := &mock.Context{}
+	ctx := &mock.Context{InMethod: "POST"}
 	ctx.SetUserID(projectID)
 
 	var body []byte
@@ -113,7 +113,7 @@ func TestResolveUser_CreatesThenReusesSameSub(t *testing.T) {
 	handler := config.ResolveUser(backend.DB, backend.Auth, backend.Access, backend.IDs)
 
 	call := func() (int, config.ResolveUserResponse) {
-		ctx := &mock.Context{}
+		ctx := &mock.Context{InMethod: "POST"}
 		ctx.SetUserID(projectID)
 		var body []byte
 		if err := json.Encode(&config.ResolveUserRequest{

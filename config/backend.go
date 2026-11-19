@@ -5,10 +5,12 @@ import (
 	"webtyp.com/auth/authority"
 	"webtyp.com/auth/clientassertion"
 	"webtyp.com/env"
+	"webtyp.com/events/inprocess"
 	"webtyp.com/fmt"
 	"webtyp.com/model"
 	"webtyp.com/orm"
 	"webtyp.com/rbac"
+	"webtyp.com/securityevent"
 )
 
 // Backend agrupa los módulos de dominio que comparten la misma base y
@@ -53,7 +55,11 @@ func NewProductionBackend(db *orm.DB, ids model.IDGenerator) (*Backend, error) {
 		return nil, err
 	}
 
-	ca, err := clientassertion.New(db, ProjectKeys{DB: db}, panelOrigin, authMod.Notify)
+	caReport, err := securityevent.New(&inprocess.Broker{})
+	if err != nil {
+		return nil, err
+	}
+	ca, err := clientassertion.New(db, ProjectKeys{DB: db}, panelOrigin, caReport)
 	if err != nil {
 		return nil, err
 	}

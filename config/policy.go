@@ -95,7 +95,8 @@ func EnsurePolicy(rbacSvc *rbac.Service, authMod *authority.Module, accessMod *a
 		return err
 	}
 
-	for _, res := range access.Resources() {
+	for _, ent := range access.Definition.Entities {
+		res := model.Resource(ent.Name)
 		permID := "perm_" + string(res)
 		if err := rbacSvc.CreatePermission(IAMProjectID, permID, string(res), res, model.Create|model.Read|model.Update|model.Delete); err != nil && !isAlreadyExistsErr(err) {
 			return err

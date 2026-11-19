@@ -10,11 +10,12 @@ import (
 	"webtyp.com/auth/passkey"
 	"webtyp.com/auth/session/cookie"
 	"webtyp.com/env"
+	"webtyp.com/events/inprocess"
 	"webtyp.com/fmt"
 	"webtyp.com/model"
 	"webtyp.com/orm"
 	"webtyp.com/rbac"
-	"webtyp.com/webauthn/server"
+	"webtyp.com/securityevent"
 )
 
 const (
@@ -37,25 +38,6 @@ const (
 	AdminSessionIdle     = 15 * 60
 )
 
-// OriginHost extracts the host from origin (stripping scheme, port, trailing slash).
-func OriginHost(origin string) string {
-	if fmt.HasPrefix(origin, "https://") {
-		origin = origin[8:]
-	} else if fmt.HasPrefix(origin, "http://") {
-		origin = origin[7:]
-	}
-	for i := 0; i < len(origin); i++ {
-		if origin[i] == ':' || origin[i] == '/' {
-			return origin[:i]
-		}
-	}
-	return origin
-}
-
-func originHost(origin string) string {
-	return OriginHost(origin)
-}
-
 // NewProductionAuth arma el motor de identidad+RBAC para producción (Google OAuth).
 func NewProductionAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *rbac.Service, error) {
 	clientID := env.Get(EnvGoogleClientID)
@@ -75,9 +57,15 @@ func NewProductionAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *r
 		return nil, nil, fmt.Errf("auth: missing required environment variable %s", EnvJWTSecret)
 	}
 
+	broker := &inprocess.Broker{}
+	report, err := securityevent.New(broker)
+	if err != nil {
+		return nil, nil, err
+	}
 	authMod, err := authority.New(db, auth.Config{
 		IDs:        ids,
 		TrustProxy: true,
+		Events:     broker,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -95,7 +83,7 @@ func NewProductionAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *r
 	}
 	gp := googleProv{ClientID: clientID, Secret: sec, Redirect: redirectURL}
 	g := (*google.GoogleProvider)(unsafe.Pointer(&gp))
-	authMod.Enable(oauth2.New(authMod, authMod, authMod, []auth.OAuthProvider{g},
+	authMod.Enable(oauth2.New(authMod, authMod, authMod, report, []auth.OAuthProvider{g},
 		oauth2.WithRedirectValidator(isVeltyDomain),
 	))
 
@@ -122,8 +110,7 @@ func NewProductionAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *r
 
 	origin := env.Get(EnvPanelOrigin)
 	if origin != "" {
-		rp := server.RelyingParty{ID: OriginHost(origin), Origin: origin}
-		pk, err := passkey.New(db, ids, authMod, rp)
+		pk, err := passkey.New(db, ids, authMod, report, origin)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -296,6 +296,8 @@ func TestInventory_PublicRoutes(t *testing.T) {
 		"POST /logout",
 		"GET /oauth/google",
 		"GET /oauth/callback/google",
+		"POST /passkey/verify/options",
+		"POST /passkey/verify",
 	)
 }
 
@@ -382,25 +384,6 @@ func TestEnsurePolicyIdempotent(t *testing.T) {
 	}
 	if !b.RBAC.Can(config.IAMProjectID, u.Id, config.ResourceProject, model.Read) {
 		t.Error("admin user does not have permission after EnsurePolicy")
-	}
-}
-
-// originHost
-func TestOriginHost(t *testing.T) {
-	cases := []struct {
-		in   string
-		want string
-	}{
-		{"https://iam.velty.cl", "iam.velty.cl"},
-		{"https://localhost:8080", "localhost"},
-		{"http://example.com:3000/path", "example.com"},
-		{"iam.velty.cl", "iam.velty.cl"},
-	}
-	for _, c := range cases {
-		got := config.OriginHost(c.in)
-		if got != c.want {
-			t.Errorf("OriginHost(%q) = %q, want %q", c.in, got, c.want)
-		}
 	}
 }
 

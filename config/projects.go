@@ -49,7 +49,8 @@ func MigrateSchema(conn ddl.Execer, ddlCompiler ddl.Compiler) error {
 	if err := d.Sync(&Project{}); err != nil {
 		return err
 	}
-	return conn.Exec("UPDATE project SET active = 1 WHERE active IS NULL OR active = 0")
+	_, err := conn.Exec("UPDATE project SET active = 1 WHERE active IS NULL OR active = 0")
+	return err
 }
 
 func validatePublicKey(publicKeyB64 string) ([]byte, error) {

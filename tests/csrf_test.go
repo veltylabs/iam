@@ -49,7 +49,7 @@ func TestAdminMutationRejectsCrossSite(t *testing.T) {
 // ellas es un cliente que no es el panel.
 func TestAdminMutationRejectsMissingOriginSignals(t *testing.T) {
 	b, r := setupPanel(t, "admin@example.com")
-	u, err := b.Auth.CreateUser("admin@example.com", "Admin", "")
+	u, err := b.Auth.UserByEmail("admin@example.com")
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}

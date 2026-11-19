@@ -26,7 +26,7 @@ func TestAssignRoleUnknownCode404(t *testing.T) {
 
 	handler := config.AssignRole(backend.DB, backend.RBAC, backend.Access, backend.IDs)
 	call := func(roleCode string) int {
-		ctx := &mock.Context{}
+		ctx := &mock.Context{InMethod: "POST"}
 		ctx.SetUserID(projectID)
 		var out []byte
 		if err := json.Encode(&config.AssignRoleRequest{

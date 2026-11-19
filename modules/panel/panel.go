@@ -24,7 +24,10 @@ func Boot(me config.AdminMeResponse) {
 		User:      adminIdentity{name: me.Name},
 		CanView:   func(id string) bool { return true },
 	}
-	explorer, _ := apiexplorer.New(apiexplorer.Config{})
+	explorer, err := apiexplorer.New(apiexplorer.FromServer())
+	if err != nil {
+		panic(err)
+	}
 	p.Modules = []platformd.UIModule{
 		platformd.NewUIModule(ModuleProjects, "Proyectos", IconProjects, projectsView()),
 		platformd.NewUIModule(ModuleRoles, "Roles", IconRoles, rolesView()),

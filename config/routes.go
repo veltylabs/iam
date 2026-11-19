@@ -4,6 +4,7 @@ import (
 	"webtyp.com/access"
 	"webtyp.com/auth/authority"
 	"webtyp.com/fmt"
+	"webtyp.com/crud"
 	"webtyp.com/model"
 	"webtyp.com/orm"
 	"webtyp.com/rbac"
@@ -52,7 +53,7 @@ func RegisterRoutes(r router.Router, b *Backend, adminEmails []string) {
 	r.Post(PathAdminProjects, RequireSameOrigin(b.DB, b.Access, b.IDs, b.Auth, b.Origin, CreateProjectHandler(b.DB, b.Access, b.IDs, b.Auth, b.RBAC))).Requires(ResourceProject, model.Create).RequiresMFA()
 	r.Post(PathAdminProjectKey, RequireSameOrigin(b.DB, b.Access, b.IDs, b.Auth, b.Origin, SetProjectKeyHandler(b.DB, b.Access, b.IDs, b.Auth))).Requires(ResourceProject, model.Update).RequiresMFA()
 	r.Post(PathAdminProjectActive, RequireSameOrigin(b.DB, b.Access, b.IDs, b.Auth, b.Origin, SetActiveHandler(b.DB, b.Access, b.IDs, b.Auth))).Requires(ResourceProject, model.Update).RequiresMFA()
-	b.Access.MountOperations(r.(router.OperationRegistry))
+	_ = crud.Mount(r.(router.OperationRegistry), nil, nil, b.Access)
 
 	router.MountIntrospection(r, router.IntrospectionPath, nil).Requires(ResourceRoutes, model.Read).RequiresMFA()
 }

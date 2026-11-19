@@ -10,11 +10,12 @@ import (
 	googlemock "webtyp.com/auth/oauth2/provider/google/mock"
 	"webtyp.com/auth/passkey"
 	"webtyp.com/auth/session/cookie"
+	"webtyp.com/events/inprocess"
 	"webtyp.com/model"
 	"webtyp.com/orm"
 	"webtyp.com/rbac"
+	"webtyp.com/securityevent"
 	"webtyp.com/user"
-	"webtyp.com/webauthn/server"
 )
 
 // LocalScenarios son identidades de desarrollo determinísticas para probar
@@ -31,9 +32,15 @@ func NewLocalAuth(db *orm.DB, ids model.IDGenerator) (*authority.Module, *rbac.S
 
 // NewLocalAuthWithScenarios permite a los tests inyectar escenarios propios.
 func NewLocalAuthWithScenarios(db *orm.DB, ids model.IDGenerator, scenarios []local.Scenario) (*authority.Module, *rbac.Service, error) {
+	broker := &inprocess.Broker{}
+	report, err := securityevent.New(broker)
+	if err != nil {
+		return nil, nil, err
+	}
 	authMod, err := authority.New(db, auth.Config{
 		IDs:        ids,
 		TrustProxy: true,
+		Events:     broker,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -44,7 +51,7 @@ func NewLocalAuthWithScenarios(db *orm.DB, ids model.IDGenerator, scenarios []lo
 		return nil, nil, err
 	}
 
-	authMod.Enable(oauth2.New(authMod, authMod, authMod,
+	authMod.Enable(oauth2.New(authMod, authMod, authMod, report,
 		[]auth.OAuthProvider{&googlemock.MockProvider{User: auth.OAuthUserInfo{ID: "local-admin", Email: "admin@iam.local", Name: "Admin Local"}}},
 		oauth2.WithRedirectValidator(isVeltyDomain),
 	))
@@ -72,8 +79,7 @@ func NewLocalAuthWithScenarios(db *orm.DB, ids model.IDGenerator, scenarios []lo
 	}
 	authMod.SetStepUpStrategy(stepUp)
 
-	rp := server.RelyingParty{ID: OriginHost(LocalPanelOrigin), Origin: LocalPanelOrigin}
-	pk, err := passkey.New(db, ids, authMod, rp)
+	pk, err := passkey.New(db, ids, authMod, report, LocalPanelOrigin)
 	if err != nil {
 		return nil, nil, err
 	}

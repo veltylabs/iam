@@ -8,8 +8,9 @@ import (
 	"webtyp.com/model"
 )
 
+const exampleResource model.Resource = "example"
+
 const (
-	exampleResource model.Resource = "example"
 	roleExampleID                  = "role_example_admin"
 	roleExampleCode                = "example_admin"
 	permExampleRead                = "example:read"
