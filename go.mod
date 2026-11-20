@@ -18,7 +18,7 @@ require (
 	webtyp.com/events v0.1.15
 	webtyp.com/fetch v0.1.33
 	webtyp.com/fmt v1.0.3
-	webtyp.com/form v0.4.70
+	webtyp.com/form v0.4.72
 	webtyp.com/github v0.0.3
 	webtyp.com/goflare v0.5.76
 	webtyp.com/html v0.0.34
