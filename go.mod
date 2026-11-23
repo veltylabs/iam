@@ -7,7 +7,7 @@ require (
 	webtyp.com/auth v0.0.128
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.89
-	webtyp.com/components v0.8.77
+	webtyp.com/components v0.8.79
 	webtyp.com/crud v0.0.19
 	webtyp.com/crypto v0.0.32
 	webtyp.com/css v0.4.33
@@ -18,15 +18,15 @@ require (
 	webtyp.com/events v0.1.15
 	webtyp.com/fetch v0.1.33
 	webtyp.com/fmt v1.0.3
-	webtyp.com/form v0.4.72
+	webtyp.com/form v0.4.73
 	webtyp.com/github v0.0.3
 	webtyp.com/goflare v0.5.76
 	webtyp.com/html v0.0.34
 	webtyp.com/json v0.5.40
 	webtyp.com/jwt v0.1.45
 	webtyp.com/lang v0.1.22
-	webtyp.com/layout v0.3.137
-	webtyp.com/model v0.2.26
+	webtyp.com/layout v0.3.139
+	webtyp.com/model v0.2.27
 	webtyp.com/orm v0.12.42
 	webtyp.com/rbac v0.0.50
 	webtyp.com/router v0.5.9
