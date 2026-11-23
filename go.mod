@@ -13,7 +13,7 @@ require (
 	webtyp.com/css v0.4.33
 	webtyp.com/ddl v0.0.59
 	webtyp.com/deploy v0.2.120
-	webtyp.com/dom v0.13.32
+	webtyp.com/dom v0.13.34
 	webtyp.com/env v0.1.5
 	webtyp.com/events v0.1.15
 	webtyp.com/fetch v0.1.33
