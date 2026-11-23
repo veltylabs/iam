@@ -89,5 +89,5 @@ require (
 	webtyp.com/pwa v0.2.24 // indirect
 	webtyp.com/sitec v0.2.100 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
-	webtyp.com/view v0.6.91 // indirect
+	webtyp.com/view v0.6.95 // indirect
 )
