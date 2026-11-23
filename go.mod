@@ -4,7 +4,7 @@ go 1.26.8
 
 require (
 	webtyp.com/access v0.0.73
-	webtyp.com/auth v0.0.128
+	webtyp.com/auth v0.0.129
 	webtyp.com/base64 v0.0.6
 	webtyp.com/cloudflare v0.0.89
 	webtyp.com/components v0.8.79
