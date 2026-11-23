@@ -39,7 +39,7 @@ require (
 	webtyp.com/unixid v0.3.4
 	webtyp.com/user v0.3.29
 	webtyp.com/webauthn v0.1.26
-	webtyp.com/widget v0.6.50
+	webtyp.com/widget v0.6.52
 )
 
 require (
