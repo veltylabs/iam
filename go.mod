@@ -6,7 +6,7 @@ require (
 	webtyp.com/access v0.0.73
 	webtyp.com/auth v0.0.129
 	webtyp.com/base64 v0.0.6
-	webtyp.com/cloudflare v0.0.89
+	webtyp.com/cloudflare v0.0.90
 	webtyp.com/components v0.8.79
 	webtyp.com/crud v0.0.19
 	webtyp.com/crypto v0.0.32
@@ -20,7 +20,7 @@ require (
 	webtyp.com/fmt v1.0.4
 	webtyp.com/form v0.4.73
 	webtyp.com/github v0.0.3
-	webtyp.com/goflare v0.5.76
+	webtyp.com/goflare v0.5.79
 	webtyp.com/html v0.0.34
 	webtyp.com/json v0.5.40
 	webtyp.com/jwt v0.1.45
@@ -81,13 +81,13 @@ require (
 	webtyp.com/icons v0.0.43 // indirect
 	webtyp.com/image v0.1.26 // indirect
 	webtyp.com/input v0.2.6 // indirect
-	webtyp.com/js v0.1.6 // indirect
+	webtyp.com/js v0.1.8 // indirect
 	webtyp.com/jsvalue v0.1.23 // indirect
 	webtyp.com/keyring v0.2.10 // indirect
 	webtyp.com/modfind v0.0.11 // indirect
 	webtyp.com/msgtype v0.1.2 // indirect
 	webtyp.com/pwa v0.2.24 // indirect
-	webtyp.com/sitec v0.2.100 // indirect
+	webtyp.com/sitec v0.2.107 // indirect
 	webtyp.com/tinygo v1.0.1 // indirect
 	webtyp.com/view v0.6.95 // indirect
 )
