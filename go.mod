@@ -17,7 +17,7 @@ require (
 	webtyp.com/env v0.1.5
 	webtyp.com/events v0.1.15
 	webtyp.com/fetch v0.1.33
-	webtyp.com/fmt v1.0.3
+	webtyp.com/fmt v1.0.4
 	webtyp.com/form v0.4.73
 	webtyp.com/github v0.0.3
 	webtyp.com/goflare v0.5.76
@@ -29,7 +29,7 @@ require (
 	webtyp.com/model v0.2.27
 	webtyp.com/orm v0.12.42
 	webtyp.com/rbac v0.0.50
-	webtyp.com/router v0.5.9
+	webtyp.com/router v0.5.10
 	webtyp.com/securityevent v0.0.2
 	webtyp.com/server v0.2.141
 	webtyp.com/sqlt v0.0.26
